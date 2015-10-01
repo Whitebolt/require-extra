@@ -8,10 +8,11 @@ var resolver = new (require('async-resolve'))();
 
 var readFile = Promise.promisify(fs.readFile);
 
+
 /**
  * Resolve a module path starting from current directory via returned promise.
  *
- * @private
+ * @public
  * @param {string} moduleName       Module name or path (same format as supplied to require()).
  * @returns {Promise}
  */
@@ -26,8 +27,6 @@ function resolveModulePath(moduleName){
     });
   });
 }
-
-
 
 /**
  * Return given value as array.  If already an array, just return as-is.
@@ -103,21 +102,35 @@ function loadModule(modulePath){
   });
 }
 
-
 /**
- * Load a module asychronously, this is an async version of require().
+ * Load a module
  *
- * @public
- * @param {string} moduleName     Module name or path, same format as for require().
- * @param {function} [callback]   Node-style callback to use instead of (or as well as) returned promise.
- * @returns {Promise}             Promise, resolved with the module or undefined.
+ * @param {string} moduleName   Module name or path, same format as for require().
+ * @returns {Promise}
  */
-function requireAsync(moduleName, callback){
-  var async = resolveModulePath(moduleName).then(function(modulePath){
+function loader( moduleName){
+  return resolveModulePath(moduleName).then(function(modulePath){
     return loadModule(require.resolve(modulePath));
   }, function(error){
     return Promise.reject(error);
   });
+}
+
+/**
+ * Load a module asychronously, this is an async version of require().  Will load a collection of modules if
+ * an array is supplied.  Will reject if module is not found or on error.
+ *
+ * @public
+ * @param {string|Array} moduleName     Module name or path (or array of either), same format as for require().
+ * @param {function} [callback]         Node-style callback to use instead of (or as well as) returned promise.
+ * @returns {Promise}                   Promise, resolved with the module(s) or undefined.
+ */
+function requireAsync(moduleName, callback){
+  if(_.isArray(moduleName)){
+    var async = Promise.all(moduleName.map(loader));
+  }else{
+    var async = resolveModulePath(moduleName).then(loader);
+  }
 
   if(callback){
     async.nodeify(callback);
@@ -125,6 +138,8 @@ function requireAsync(moduleName, callback){
 
   return async;
 }
+
+requireAsync.resolve = resolveModulePath;
 
 module.exports = {
   getModule: getModule,
