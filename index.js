@@ -31,16 +31,52 @@ function makeArray(ary){
 function getModule(modulePath, defaultReturnValue){
   if(modulePath){
     modulePath = makeArray(modulePath);
-    return requireAsync(modulePath.shift()).then(function(module){
-      if((module === undefined) && (modulePath.length)){
+    return requireAsync(modulePath.shift()).catch(function(error){
+      if(modulePath.length){
         return requireAsync(modulePath);
       }
 
-      return module;
-    })
+      return Promise.resolve(defaultReturnValue || false);
+    });
   }
 
   return Promise.resolve(defaultReturnValue || false);
+}
+
+/**
+ * Read text from a file and handle any errors.
+ *
+ * @param {string} fileName
+ * @returns {string|undefined}
+ */
+function loadModuleText(fileName){
+  return readFile(fileName, 'utf8').then(function(moduleText){
+    return moduleText;
+  });
+}
+
+/**
+ * Evaluate module text in similar fashion to require evaluations.
+ *
+ * @param {string} modulePath   The path of the evaluated module.
+ * @param {string} moduleText   The text content of the module.
+ * @returns {mixed}
+ */
+function evalModuleText(modulePath, moduleText){
+  return ((moduleText !== undefined)?_eval(moduleText, modulePath, {}, true):undefined);
+}
+
+/**
+ * Load and evaluate a module returning undefined to promise resolve on failure.
+ *
+ * @param {string} modulePath   The path of the evaluated module.
+ * @param {string} moduleText   The text content of the module.
+ * @returns {mixed}
+ */
+function loadModule(modulePath){
+  return loadModuleText(modulePath).then(function(moduleText){
+    return evalModuleText(modulePath, moduleText);
+  });
 }
 
 
@@ -49,23 +85,23 @@ function getModule(modulePath, defaultReturnValue){
  *
  * @private
  * @param {string} moduleName     Module name or path, same format as for require().
+ * @param {function} [callback]   Node-style callback to use instead of (or as well as) returned promise.
  * @returns {Promise}             Promise, resolved with the module or undefined.
  */
-function requireAsync(moduleName){
-  try{
-    var modulePath = require.resolve(moduleName);
+function requireAsync(moduleName, callback){
+  var async;
 
-    return readFile(modulePath, 'utf8').then(function(moduleText){
-      return _eval(moduleText, modulePath, {}, true);
-    }, function(error){
-      return undefined;
-    }).catch(function(error){
-      return undefined;
-    });
+  try{
+    async = loadModule(require.resolve(moduleName));
   }catch(error){
+    async = Promise.reject(error);
   }
 
-  return Promise.resolve(undefined);
+  if(callback){
+    async.nodeify(callback);
+  }
+
+  return async;
 }
 
 module.exports = {
