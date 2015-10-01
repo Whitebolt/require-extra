@@ -4,8 +4,29 @@ var Promise = require('bluebird');
 var fs = require('fs');
 var _eval = require('eval');
 var _ = require('lodash');
+var resolver = new (require('async-resolve'))();
 
 var readFile = Promise.promisify(fs.readFile);
+
+/**
+ * Resolve a module path starting from current directory via returned promise.
+ *
+ * @private
+ * @param {string} moduleName       Module name or path (same format as supplied to require()).
+ * @returns {Promise}
+ */
+function resolveModulePath(moduleName){
+  return new Promise(function(resolve, reject){
+    resolver.resolve(moduleName, __dirname, function(err, modulePath){
+      if(err){
+        return reject(err);
+      }
+
+      return resolve(modulePath);
+    });
+  });
+}
+
 
 
 /**
@@ -23,7 +44,7 @@ function makeArray(ary){
 /**
  * Load a module or return a default value.  Can take an array to try.  Will load module asychronously.
  *
- * @private
+ * @public
  * @param {string|Array} modulePath             Module path or array of paths.
  * @param {mixed} [defaultReturnValue=false]    The default value to return if module load fails.
  * @returns {Promise}
@@ -46,6 +67,7 @@ function getModule(modulePath, defaultReturnValue){
 /**
  * Read text from a file and handle any errors.
  *
+ * @private
  * @param {string} fileName
  * @returns {string|undefined}
  */
@@ -58,6 +80,7 @@ function loadModuleText(fileName){
 /**
  * Evaluate module text in similar fashion to require evaluations.
  *
+ * @private
  * @param {string} modulePath   The path of the evaluated module.
  * @param {string} moduleText   The text content of the module.
  * @returns {mixed}
@@ -69,6 +92,7 @@ function evalModuleText(modulePath, moduleText){
 /**
  * Load and evaluate a module returning undefined to promise resolve on failure.
  *
+ * @private
  * @param {string} modulePath   The path of the evaluated module.
  * @param {string} moduleText   The text content of the module.
  * @returns {mixed}
@@ -83,19 +107,17 @@ function loadModule(modulePath){
 /**
  * Load a module asychronously, this is an async version of require().
  *
- * @private
+ * @public
  * @param {string} moduleName     Module name or path, same format as for require().
  * @param {function} [callback]   Node-style callback to use instead of (or as well as) returned promise.
  * @returns {Promise}             Promise, resolved with the module or undefined.
  */
 function requireAsync(moduleName, callback){
-  var async;
-
-  try{
-    async = loadModule(require.resolve(moduleName));
-  }catch(error){
-    async = Promise.reject(error);
-  }
+  var async = resolveModulePath(moduleName).then(function(modulePath){
+    return loadModule(require.resolve(modulePath));
+  }, function(error){
+    return Promise.reject(error);
+  });
 
   if(callback){
     async.nodeify(callback);
