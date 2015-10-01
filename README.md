@@ -1,2 +1,2 @@
 # require2
-Node module loader, when you need features, which go beyond the normal require() function.
+Node module loader, providing some extra features beyond the normal require() functionality.
