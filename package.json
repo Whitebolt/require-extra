@@ -1,0 +1,35 @@
+{
+  "name": "require-extra",
+  "description": "Node module loader, providing some extra features beyond the normal require() functionality.",
+  "author": "Whitebolt <hello@whitebolt.net>",
+  "contributors": [
+    {
+      "name": "Stephen Simpson",
+      "email": "stephen@whitebolt.net"
+    },
+    {
+      "name": "Kristjan Allikas",
+      "email": "kris@whitebolt.net"
+    }
+  ],
+  "version": "0.0.1",
+  "private": true,
+  "keywords": [
+    "require",
+    "async",
+    "promises"
+  ],
+  "dependencies": {
+  },
+  "main": "./index.js",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ssimpo/require-extra.git"
+  },
+  "license": "WhiteboltLtd",
+  "bugs": {
+    "url": "https://github.com/ssimpo/require-extra/issues"
+  },
+  "devDependencies": {
+  }
+}
