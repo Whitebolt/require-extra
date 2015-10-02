@@ -77,8 +77,8 @@ requireX.resolve('express').then(function(path){
 An options object can be passed to both require() and require.resolve() as the first argument.
 
 The possible options are:
-1. **resolver:** A resolver class instance for calculating paths (this an object with resolve function like the one available in [async-resolve](https://github.com/Meettya/async-resolve)).
-2. **dir** The route directory to use for starting path calculations.  If this is not supplied then the path is calcuated using an algorithm that loops through a stack trace.
+ 1. **resolver:** A resolver class instance for calculating paths (this an object with resolve function like the one available in [async-resolve](https://github.com/Meettya/async-resolve)).
+ 2. **dir** The route directory to use for starting path calculations.  If this is not supplied then the path is calcuated using an algorithm that loops through a stack trace.
 
 ```javascript
 var requireX = require('require-extra');
@@ -111,7 +111,7 @@ myResolverClass = requireX.getResolver({
 })
 ```
 
-The returned class instance is actually a Resolver from [async-resolve](https://github.com/Meettya/async-resolve)).
+The returned class instance is actually a Resolver from [async-resolve](https://github.com/Meettya/async-resolve).
 
 
 ## Trying muliple paths for a module
