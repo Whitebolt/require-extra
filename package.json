@@ -21,10 +21,11 @@
     "bluebird"
   ],
   "dependencies": {
-    "lodash": "^3.10.1",
-    "eval": "~0.1.1",
+    "async-resolve": "~0.3.3",
     "bluebird": "^2.9.34",
-    "async-resolve": "~0.3.3"
+    "callsite": "^1.0.0",
+    "eval": "~0.1.1",
+    "lodash": "^3.10.1"
   },
   "main": "./index.js",
   "repository": {
@@ -35,6 +36,5 @@
   "bugs": {
     "url": "https://github.com/ssimpo/require-extra/issues"
   },
-  "devDependencies": {
-  }
+  "devDependencies": {}
 }

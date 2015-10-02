@@ -2,9 +2,11 @@
 
 var Promise = require('bluebird');
 var fs = require('fs');
+var path = require('path');
 var _eval = require('eval');
 var _ = require('lodash');
 var resolver = new (require('async-resolve'))();
+var callsite = require('callsite');
 
 var readFile = Promise.promisify(fs.readFile);
 var self = this;
@@ -25,15 +27,70 @@ function resolveModulePath(userResolver, moduleName) {
   moduleName = moduleName || userResolver;
   userResolver = userResolver || resolver;
 
+  var dir = getRoot(userResolver);
   return new Promise(function(resolve, reject) {
-    userResolver.resolve(moduleName, __dirname, function(err, modulePath) {
-      if (err) {
-        return reject(err);
-      }
+    getResolver(userResolver).resolve(
+        moduleName,
+        dir,
 
-      return resolve(modulePath);
-    });
+        function(err, modulePath) {
+          if (err) {
+            return reject(err);
+          }
+
+          return resolve(modulePath);
+        }
+    );
   });
+}
+
+/**
+ * Calculate the calling directory path by examing the stack-trace.
+ *
+ * @private
+ * @returns {string}      Directory path
+ */
+function getCallingDir(){
+  var dir;
+
+  callsite().every(function(trace) {
+    var traceFile = trace.getFileName();
+    if(traceFile !== __filename){
+      dir = path.dirname(traceFile);
+      return false;
+    }
+
+    return true;
+  });
+
+  return dir;
+}
+
+/**
+ * Get the root directory to use from the supplied object or calculate it.
+ *
+ * @private
+ * @param {Object} obj    The options object containing a 'dir' property.
+ * @returns {string}      The directory path.
+ */
+function getRoot(obj){
+  return obj.dir || getCallingDir();
+}
+
+/**
+ * Get the resolver object from a given object.  Assumes it has received
+ * either an actual resolver or an options object with resolver in it.  If this
+ * is not true then return the default resolver.
+ *
+ * @private
+ * @param {Object} obj    Object to get resolver from.
+ * @returns {Object}      The resolver object.
+ */
+function getResolve(obj){
+  if(obj){
+    return (obj.resolver || obj.resolve?obj:resolver);
+  }
+  return resolver;
 }
 
 /**
@@ -147,7 +204,8 @@ function loader(userResolver, moduleName){
  * is not found or on error.
  *
  * @public
- * @param {Object} [userResolver=resolver]      User-created resolver function.
+ * @param {Object} [userResolver=resolver]      User-created resolver function
+ *                                              or an options object.
  * @param {string|Array} moduleName             Module name or path (or
  *                                              array of either), same format
  *                                              as for require().
@@ -181,7 +239,7 @@ function requireAsync(userResolver, moduleName, callback) {
 
 /**
  * Generate a new resolver object following specfic rules defined in the
- * options parametre. If no options are supplied, return the default resolver.
+ * options parametre. If no options are supplied, return a default resolver.
  *
  * @public
  * @param {Object} options    Options to pass to the resolver object
@@ -189,11 +247,7 @@ function requireAsync(userResolver, moduleName, callback) {
  *                            resolver if no options supplied.
  */
 function getResolver(options) {
-  if(options){
-    return new (require('async-resolve'))(options);
-  }
-
-  return resolver;
+  return new (require('async-resolve'))(options || {});
 }
 
 requireAsync.resolve = resolveModulePath;
