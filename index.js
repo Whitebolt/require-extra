@@ -123,7 +123,7 @@ function loadModule(modulePath) {
  */
 function loader( moduleName){
   return resolveModulePath(moduleName).then(function(modulePath) {
-    return loadModule(require.resolve(modulePath));
+    return loadModule(modulePath);
   }, function(error) {
     return Promise.reject(error);
   });
