@@ -7,19 +7,26 @@ var _ = require('lodash');
 var resolver = new (require('async-resolve'))();
 
 var readFile = Promise.promisify(fs.readFile);
+var self = this;
 
 
 /**
  * Resolve a module path starting from current directory via returned promise.
  *
  * @public
- * @param {string} moduleName       Module name or path (same format as
- *                                  supplied to require()).
+ * @param {Object} [userResolver=resolver]      User-created resolver function.
+ * @param {string} moduleName                   Module name or path (same
+ *                                              format as supplied
+ *                                              to require()).
+ * @returns {Promise}
  * @returns {Promise}
  */
-function resolveModulePath(moduleName) {
+function resolveModulePath(userResolver, moduleName) {
+  moduleName = moduleName || userResolver;
+  userResolver = userResolver || resolver;
+
   return new Promise(function(resolve, reject) {
-    resolver.resolve(moduleName, __dirname, function(err, modulePath) {
+    userResolver.resolve(moduleName, __dirname, function(err, modulePath) {
       if (err) {
         return reject(err);
       }
@@ -117,12 +124,17 @@ function loadModule(modulePath) {
 /**
  * Load a module
  *
- * @param {string} moduleName   Module name or path, same format as
- *                              for require().
+ * @private
+ * @param {Object} [userResolver=resolver]      User-created resolver function.
+ * @param {string} moduleName                   Module name or path, same
+ *                                              format as for require().
  * @returns {Promise}
  */
-function loader( moduleName){
-  return resolveModulePath(moduleName).then(function(modulePath) {
+function loader(userResolver, moduleName){
+  moduleName = moduleName || userResolver;
+  userResolver = userResolver || resolver;
+
+  return resolveModulePath(userResolver, moduleName).then(function(modulePath) {
     return loadModule(modulePath);
   }, function(error) {
     return Promise.reject(error);
@@ -135,18 +147,29 @@ function loader( moduleName){
  * is not found or on error.
  *
  * @public
- * @param {string|Array} moduleName     Module name or path (or array of
- *                                      either), same format as for require().
- * @param {function} [callback]         Node-style callback to use instead of
- *                                      (or as well as) returned promise.
- * @returns {Promise}                   Promise, resolved with the module(s)
- *                                      or undefined.
+ * @param {Object} [userResolver=resolver]      User-created resolver function.
+ * @param {string|Array} moduleName             Module name or path (or
+ *                                              array of either), same format
+ *                                              as for require().
+ * @param {function} [callback]                 Node-style callback to use
+ *                                              instead of (or as well as)
+ *                                              returned promise.
+ * @returns {Promise}                           Promise, resolved with the
+ *                                              module(s) or undefined.
  */
-function requireAsync(moduleName, callback) {
+function requireAsync(userResolver, moduleName, callback) {
+  if(_.isString(userResolver) || _.isArray(userResolver)){
+    callback = moduleName;
+    moduleName = userResolver;
+    userResolver = resolver;
+  }
+
   if (_.isArray(moduleName)){
-    var async = Promise.all(moduleName.map(loader));
+    var async = Promise.all(moduleName.map(function(moduleName){
+      loader(userResolver, moduleName);
+    }));
   } else {
-    var async = resolveModulePath(moduleName).then(loader);
+    var async = loader(userResolver, moduleName);
   }
 
   if (callback) {
