@@ -140,8 +140,6 @@ function requireAsync(moduleName, callback){
 }
 
 requireAsync.resolve = resolveModulePath;
+requireAsync.getModule = getModule;
 
-module.exports = {
-  getModule: getModule,
-  require: requireAsync
-}
+module.exports = requireAsync;

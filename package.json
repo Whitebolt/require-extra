@@ -1,6 +1,6 @@
 {
   "name": "require-extra",
-  "description": "Node module loader, providing some extra features beyond the normal require() functionality.",
+  "description": "NodeJs module loading with an asychronous flavour",
   "author": "Whitebolt <hello@whitebolt.net>",
   "contributors": [
     {
@@ -12,12 +12,14 @@
       "email": "kris@whitebolt.net"
     }
   ],
-  "version": "0.0.1",
+  "version": "0.1.0",
   "private": true,
   "keywords": [
     "require",
     "async",
-    "promises"
+    "promises",
+    "module",
+    "bluebird"
   ],
   "dependencies": {
     "lodash": "^3.10.1",
