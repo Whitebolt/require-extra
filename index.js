@@ -156,7 +156,25 @@ function requireAsync(moduleName, callback) {
   return async;
 }
 
+/**
+ * Generate a new resolver object following specfic rules defined in the
+ * options parametre. If no options are supplied, return the default resolver.
+ *
+ * @public
+ * @param {Object} options    Options to pass to the resolver object
+ * @returns {Object}          The new resolver object or the current module
+ *                            resolver if no options supplied.
+ */
+function getResolver(options) {
+  if(options){
+    return new (require('async-resolve'))(options);
+  }
+
+  return resolver;
+}
+
 requireAsync.resolve = resolveModulePath;
 requireAsync.getModule = getModule;
+requireAsync.getResolver = getResolver;
 
 module.exports = requireAsync;
