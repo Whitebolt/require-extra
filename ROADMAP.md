@@ -8,6 +8,7 @@
  * Add node-style callbacks.
 4. Ensure module resolving with with new NPM directory structures.
 5. Add node-style callbacks to resolve().
+6. Add mocha tests! These should have been in from start.
 
 ## Possible features
 
