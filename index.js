@@ -13,13 +13,14 @@ var readFile = Promise.promisify(fs.readFile);
  * Resolve a module path starting from current directory via returned promise.
  *
  * @public
- * @param {string} moduleName       Module name or path (same format as supplied to require()).
+ * @param {string} moduleName       Module name or path (same format as
+ *                                  supplied to require()).
  * @returns {Promise}
  */
-function resolveModulePath(moduleName){
-  return new Promise(function(resolve, reject){
-    resolver.resolve(moduleName, __dirname, function(err, modulePath){
-      if(err){
+function resolveModulePath(moduleName) {
+  return new Promise(function(resolve, reject) {
+    resolver.resolve(moduleName, __dirname, function(err, modulePath) {
+      if (err) {
         return reject(err);
       }
 
@@ -36,22 +37,28 @@ function resolveModulePath(moduleName){
  * @param {Array|mixed} ary     Value to return as an array
  * @returns {Array}
  */
-function makeArray(ary){
-  return ((ary === undefined)?[]:(_.isArray(ary)?ary:[ary]));
+function makeArray(ary) {
+  return (
+      (ary === undefined)?
+          []:
+          (_.isArray(ary)?ary:[ary])
+  );
 }
 
 /**
- * Load a module or return a default value.  Can take an array to try.  Will load module asychronously.
+ * Load a module or return a default value.  Can take an array to try.  Will
+ * load module asychronously.
  *
  * @public
  * @param {string|Array} modulePath             Module path or array of paths.
- * @param {mixed} [defaultReturnValue=false]    The default value to return if module load fails.
+ * @param {mixed} [defaultReturnValue=false]    The default value to return
+ *                                              if module load fails.
  * @returns {Promise}
  */
-function getModule(modulePath, defaultReturnValue){
-  if(modulePath){
+function getModule(modulePath, defaultReturnValue) {
+  if (modulePath) {
     modulePath = makeArray(modulePath);
-    return requireAsync(modulePath.shift()).catch(function(error){
+    return requireAsync(modulePath.shift()).catch(function(error) {
       if(modulePath.length){
         return requireAsync(modulePath);
       }
@@ -70,8 +77,8 @@ function getModule(modulePath, defaultReturnValue){
  * @param {string} fileName
  * @returns {string|undefined}
  */
-function loadModuleText(fileName){
-  return readFile(fileName, 'utf8').then(function(moduleText){
+function loadModuleText(fileName) {
+  return readFile(fileName, 'utf8').then(function(moduleText) {
     return moduleText;
   });
 }
@@ -84,20 +91,25 @@ function loadModuleText(fileName){
  * @param {string} moduleText   The text content of the module.
  * @returns {mixed}
  */
-function evalModuleText(modulePath, moduleText){
-  return ((moduleText !== undefined)?_eval(moduleText, modulePath, {}, true):undefined);
+function evalModuleText(modulePath, moduleText) {
+  return (
+      (moduleText !== undefined)?
+          _eval(moduleText, modulePath, {}, true):
+          undefined
+  );
 }
 
 /**
- * Load and evaluate a module returning undefined to promise resolve on failure.
+ * Load and evaluate a module returning undefined to promise resolve
+ * on failure.
  *
  * @private
  * @param {string} modulePath   The path of the evaluated module.
  * @param {string} moduleText   The text content of the module.
  * @returns {mixed}
  */
-function loadModule(modulePath){
-  return loadModuleText(modulePath).then(function(moduleText){
+function loadModule(modulePath) {
+  return loadModuleText(modulePath).then(function(moduleText) {
     return evalModuleText(modulePath, moduleText);
   });
 }
@@ -105,34 +117,39 @@ function loadModule(modulePath){
 /**
  * Load a module
  *
- * @param {string} moduleName   Module name or path, same format as for require().
+ * @param {string} moduleName   Module name or path, same format as
+ *                              for require().
  * @returns {Promise}
  */
 function loader( moduleName){
-  return resolveModulePath(moduleName).then(function(modulePath){
+  return resolveModulePath(moduleName).then(function(modulePath) {
     return loadModule(require.resolve(modulePath));
-  }, function(error){
+  }, function(error) {
     return Promise.reject(error);
   });
 }
 
 /**
- * Load a module asychronously, this is an async version of require().  Will load a collection of modules if
- * an array is supplied.  Will reject if module is not found or on error.
+ * Load a module asychronously, this is an async version of require().  Will
+ * load a collection of modules if an array is supplied.  Will reject if module
+ * is not found or on error.
  *
  * @public
- * @param {string|Array} moduleName     Module name or path (or array of either), same format as for require().
- * @param {function} [callback]         Node-style callback to use instead of (or as well as) returned promise.
- * @returns {Promise}                   Promise, resolved with the module(s) or undefined.
+ * @param {string|Array} moduleName     Module name or path (or array of
+ *                                      either), same format as for require().
+ * @param {function} [callback]         Node-style callback to use instead of
+ *                                      (or as well as) returned promise.
+ * @returns {Promise}                   Promise, resolved with the module(s)
+ *                                      or undefined.
  */
-function requireAsync(moduleName, callback){
-  if(_.isArray(moduleName)){
+function requireAsync(moduleName, callback) {
+  if (_.isArray(moduleName)){
     var async = Promise.all(moduleName.map(loader));
-  }else{
+  } else {
     var async = resolveModulePath(moduleName).then(loader);
   }
 
-  if(callback){
+  if (callback) {
     async.nodeify(callback);
   }
 

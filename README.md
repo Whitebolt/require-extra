@@ -76,8 +76,8 @@ The method *getModule()* will try an array of paths looking for a module until i
 ```javascript
 var requireX = require('require-extra');
 
-requireX.getModule(['/somePath', '../some/other/path'], undefined).then(function(someModule){
-  if(someModule !== undefined){
+requireX.getModule(['/somePath', '../some/other/path'], null).then(function(someModule){
+  if(someModule !== null){
     console.log('Module found');
   }else{
     console.warn('Module not found');
