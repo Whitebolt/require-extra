@@ -1,7 +1,7 @@
 ## Things for future versions
 
 1. Provide options to replace the require methods within loaded modules so all dependancies load aschronously.
-2. Provide and options object to the require() and resolve() methods giving the user control over resolve paths and module scopes.
+2. Provide and options object to the require() and resolve() methods giving the user control over module scopes.
 3. Tidy and improve the getModule() method:
  * Add ability to load multiple modules like require().
  * Syntax is a bit messey, ensure it feel consistant with other methods.

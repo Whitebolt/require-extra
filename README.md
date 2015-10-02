@@ -37,6 +37,7 @@ requireX('express', function(error, express){
 });
 ```
 
+
 ## Loading muliple modules at once
 
 The loader can also accept an array of module-id's/paths; this will then load together asychronously.
@@ -53,6 +54,7 @@ requireX.require(['express' , 'socket.io']).spread(function(express, IO){
 });
 ```
 
+
 ## Asychronous require.resolve()
 
 A resolve method is available.  It works just like the native *require.resolve()*, except asychronously.  The *resolve()* method is a wrapper around the [async-resolve](https://github.com/Meettya/async-resolve) resolve() method.
@@ -68,6 +70,49 @@ requireX.resolve('express').then(function(path){
   console.error('Failed to find module express');
 });
 ```
+
+
+## Passing options to require() and resolve()
+
+An options object can be passed to both require() and require.resolve() as the first argument.
+
+The possible options are:
+1. **resolver:** A resolver class instance for calculating paths (this an object with resolve function like the one available in [async-resolve](https://github.com/Meettya/async-resolve)).
+2. **dir** The route directory to use for starting path calculations.  If this is not supplied then the path is calcuated using an algorithm that loops through a stack trace.
+
+```javascript
+var requireX = require('require-extra');
+
+requireX({
+  dir: '/home/me/.npm',
+  resolver: myResolverClass
+}'express').then(function(express){
+  console.log('Module express has loaded');
+}, function(error){
+  console.error('Module express, failed to load', error);
+});
+```
+
+## Creating your own resolver class
+
+The getResolver() method can be used to create a new resolver class instance.  This can be passed back to require or resolve as in the above example.
+
+```javascript
+var requireX = require('require-extra');
+
+myResolverClass = requireX.getResolver({
+  // default: ['.js', '.json', '.node'] - specify allowed filetypes, note that the 
+  // order matters. in this example index.js is prioritized over index.coffee 
+  extensions: ['.js', '.coffee', '.eco'],
+  // default : false - make searching verbose for debug and tests 
+  log: true
+  // default : 'node_modules' - its 'node_modules' directory names, may be changed 
+  modules : 'other_modules'
+})
+```
+
+The returned class instance is actually a Resolver from [async-resolve](https://github.com/Meettya/async-resolve)).
+
 
 ## Trying muliple paths for a module
 
