@@ -10,7 +10,6 @@ var requireX = require('../index.js');
 var expect = require('chai').expect;
 var path = require('path');
 var mockFs = require('mock-fs');
-var envMorth = require('mock-env').morph;
 
 
 /**
@@ -54,14 +53,6 @@ function setupMockFileSystem(){
     'grunt': {
       'index.js': 'module.exports = {\'testParam\': \'GRUNT-PARENT\'};'
     },
-  };
-
-  mockFsSetup['/test'] = {
-    'node_modules': {
-      'karma': {
-        'index.js': 'module.exports = {\'testParam\': \'KARMA\'};'
-      }
-    }
   };
 
   mockFs(mockFsSetup);
@@ -214,15 +205,6 @@ describe(describeItem(packageInfo), function() {
           expect(grunt.testParam).to.equal('GRUNT-LOCAL');
           done();
         });
-      });
-
-      it('Should load global modules', function(done){
-        envMorth(function() {
-          //requireX('karma').then(function(karma) {
-            //expect(karma.testParam).to.equal('KARMA');
-            done(); // NOT WRKING
-         // });
-        }, {NODE_PATH: '/test/node_modules'});
       });
     });
   });
