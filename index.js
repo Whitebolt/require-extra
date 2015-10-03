@@ -1,6 +1,13 @@
+/*jshint node: true */
+
+/**
+ * @external bluebird
+ * @see {@link https://github.com/petkaantonov/bluebird}
+ */
+
 'use strict';
 
-var Promise = require('bluebird');
+var Promise = require('bluebird');  // jshint ignore:line
 var fs = require('fs');
 var path = require('path');
 var _eval = require('eval');
@@ -9,7 +16,6 @@ var resolver = new (require('async-resolve'))();
 var callsite = require('callsite');
 
 var readFile = Promise.promisify(fs.readFile);
-var self = this;
 
 
 /**
@@ -20,8 +26,7 @@ var self = this;
  * @param {string} moduleName                   Module name or path (same
  *                                              format as supplied
  *                                              to require()).
- * @returns {Promise}
- * @returns {Promise}
+ * @returns {bluebird}
  */
 function resolveModulePath(userResolver, moduleName) {
   moduleName = moduleName || userResolver;
@@ -29,7 +34,7 @@ function resolveModulePath(userResolver, moduleName) {
 
   var dir = getRoot(userResolver);
   return new Promise(function(resolve, reject) {
-    getResolver(userResolver).resolve(
+    getResolve(userResolver).resolve(
         moduleName,
         dir,
 
@@ -50,7 +55,7 @@ function resolveModulePath(userResolver, moduleName) {
  * @private
  * @returns {string}      Directory path
  */
-function getCallingDir(){
+function getCallingDir() {
   var dir;
 
   callsite().every(function(trace) {
@@ -73,7 +78,7 @@ function getCallingDir(){
  * @param {Object} obj    The options object containing a 'dir' property.
  * @returns {string}      The directory path.
  */
-function getRoot(obj){
+function getRoot(obj) {
   return obj.dir || getCallingDir();
 }
 
@@ -86,7 +91,7 @@ function getRoot(obj){
  * @param {Object} obj    Object to get resolver from.
  * @returns {Object}      The resolver object.
  */
-function getResolve(obj){
+function getResolve(obj) {
   if(obj){
     return (obj.resolver || obj.resolve?obj:resolver);
   }
@@ -98,7 +103,7 @@ function getResolve(obj){
  * Undefined will return an empty array.
  *
  * @private
- * @param {Array|mixed} ary     Value to return as an array
+ * @param {Array|*} ary     Value to return as an array
  * @returns {Array}
  */
 function makeArray(ary) {
@@ -115,9 +120,9 @@ function makeArray(ary) {
  *
  * @public
  * @param {string|Array} modulePath             Module path or array of paths.
- * @param {mixed} [defaultReturnValue=false]    The default value to return
+ * @param {*} [defaultReturnValue=false]        The default value to return
  *                                              if module load fails.
- * @returns {Promise}
+ * @returns {bluebird}
  */
 function getModule(modulePath, defaultReturnValue) {
   if (modulePath) {
@@ -139,12 +144,10 @@ function getModule(modulePath, defaultReturnValue) {
  *
  * @private
  * @param {string} fileName
- * @returns {string|undefined}
+ * @returns {bluebird}
  */
 function loadModuleText(fileName) {
-  return readFile(fileName, 'utf8').then(function(moduleText) {
-    return moduleText;
-  });
+  return readFile(fileName, 'utf8');
 }
 
 /**
@@ -153,7 +156,7 @@ function loadModuleText(fileName) {
  * @private
  * @param {string} modulePath   The path of the evaluated module.
  * @param {string} moduleText   The text content of the module.
- * @returns {mixed}
+ * @returns {*}
  */
 function evalModuleText(modulePath, moduleText) {
   return (
@@ -169,8 +172,7 @@ function evalModuleText(modulePath, moduleText) {
  *
  * @private
  * @param {string} modulePath   The path of the evaluated module.
- * @param {string} moduleText   The text content of the module.
- * @returns {mixed}
+ * @returns {*}
  */
 function loadModule(modulePath) {
   return loadModuleText(modulePath).then(function(moduleText) {
@@ -185,9 +187,9 @@ function loadModule(modulePath) {
  * @param {Object} [userResolver=resolver]      User-created resolver function.
  * @param {string} moduleName                   Module name or path, same
  *                                              format as for require().
- * @returns {Promise}
+ * @returns {bluebird}
  */
-function loader(userResolver, moduleName){
+function loader(userResolver, moduleName) {
   moduleName = moduleName || userResolver;
   userResolver = userResolver || resolver;
 
@@ -212,7 +214,7 @@ function loader(userResolver, moduleName){
  * @param {function} [callback]                 Node-style callback to use
  *                                              instead of (or as well as)
  *                                              returned promise.
- * @returns {Promise}                           Promise, resolved with the
+ * @returns {bluebird}                          Promise, resolved with the
  *                                              module(s) or undefined.
  */
 function requireAsync(userResolver, moduleName, callback) {
@@ -222,12 +224,13 @@ function requireAsync(userResolver, moduleName, callback) {
     userResolver = resolver;
   }
 
+  var async;
   if (_.isArray(moduleName)){
-    var async = Promise.all(moduleName.map(function(moduleName){
+    async = Promise.all(moduleName.map(function(moduleName) {
       loader(userResolver, moduleName);
     }));
   } else {
-    var async = loader(userResolver, moduleName);
+    async = loader(userResolver, moduleName);
   }
 
   if (callback) {
@@ -254,4 +257,11 @@ requireAsync.resolve = resolveModulePath;
 requireAsync.getModule = getModule;
 requireAsync.getResolver = getResolver;
 
+/**
+ * NodeJs module loading with an asynchronous flavour
+ *
+ * @module require-extra
+ * @version 0.2.0
+ * @type {function}
+ */
 module.exports = requireAsync;

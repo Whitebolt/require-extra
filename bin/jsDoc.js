@@ -1,3 +1,5 @@
+/* jshint node: true */
+
 'use strict';
 
 var fs = require('fs');
@@ -12,7 +14,9 @@ function parseJsDoc(src, callback) {
   }).on('data', function(chunk) {
     txt += chunk.toString();
   }).on('end', function() {
-    var data = JSON.parse(txt.replace(/(?:[\n\f\r\t ]|\\n|\\r|\\t|\\f)+/g, ' '));
+    var data = JSON.parse(
+        txt.replace(/(?:[\n\f\r\t ]|\\n|\\r|\\t|\\f)+/g, ' ')
+    );
     var functions = {};
 
     data.forEach(function(item) {
@@ -24,7 +28,6 @@ function parseJsDoc(src, callback) {
   });
 }
 
-parseJsDoc(__dirname + '/../index.js', function(functions){
-  fs.writeFile('./test/index.json', JSON.stringify(functions), function (err) {
-  });
+parseJsDoc(__dirname + '/../index.js', function(functions) {
+  fs.writeFile('./test/index.json', JSON.stringify(functions), null);
 });

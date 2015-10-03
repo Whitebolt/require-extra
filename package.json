@@ -1,6 +1,6 @@
 {
   "name": "require-extra",
-  "description": "NodeJs module loading with an asychronous flavour",
+  "description": "NodeJs module loading with an asynchronous flavour",
   "author": "Whitebolt <hello@whitebolt.net>",
   "contributors": [
     {

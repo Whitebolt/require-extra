@@ -1,6 +1,8 @@
+/*jshint node: true, mocha: true */
+
+
 'use strict';
 
-var path = require('path');
 var packageInfo = require('../package.json');
 var jsDoc = require('./index.json');
 
