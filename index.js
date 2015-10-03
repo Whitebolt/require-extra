@@ -234,7 +234,7 @@ function requireAsync(userResolver, moduleName, callback) {
   }
 
   if (callback) {
-    async.nodeify(callback);
+    async.nodeify(callback, {spread: true});
   }
 
   return async;
