@@ -8,6 +8,7 @@ var packageInfo = require('../package.json');
 var jsDoc = require('./index.json');
 var requireX = require('../index.js');
 var expect = require('chai').expect;
+var path = require('path');
 
 
 /**
@@ -48,6 +49,13 @@ describe(describeItem(packageInfo), function() {
       it('Should resolve the module to returned promise', function(done) {
         requireX('../forTests/testModule1.js').then(function(testModule1) {
           expect(testModule1.testParam).to.equal(1);
+          done();
+        });
+      });
+
+      it('Should load dependant modules', function(done) {
+        requireX('../forTests/testModule1-2.js').then(function(testModule1) {
+          expect(testModule1.testParam.testParam).to.equal(2);
           done();
         });
       });
@@ -99,6 +107,28 @@ describe(describeItem(packageInfo), function() {
         });
       });
     });
+
+    describe('Should be able to set the base directory manually', function() {
+      it('Should be able to set directory to relative path', function(done) {
+        requireX({
+          dir: '../forTests'
+        }, './testModule1.js').then(function(testModule1) {
+          expect(testModule1.testParam).to.equal(1);
+          done();
+        });
+      });
+
+      it('Should be able to set directory to absolute path', function(done) {
+        requireX({
+          dir: path.resolve(__dirname + '/../')
+        }, './forTests/testModule1.js').then(function(testModule1) {
+          expect(testModule1.testParam).to.equal(1);
+          done();
+        });
+      });
+    });
+
+
   });
 
   describe(describeItem(jsDoc, 'resolveModulePath'), function() {

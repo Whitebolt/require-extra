@@ -55,13 +55,16 @@ function resolveModulePath(userResolver, moduleName) {
  * @private
  * @returns {string}      Directory path
  */
-function getCallingDir() {
-  var dir;
-
+function getCallingDir(dir) {
   callsite().every(function(trace) {
     var traceFile = trace.getFileName();
     if((traceFile !== __filename) && (!trace.isNative())){
-      dir = path.dirname(traceFile);
+      if(dir){
+        dir = path.resolve(path.dirname(traceFile), dir);
+      }else{
+        dir = path.resolve(path.dirname(traceFile));
+      }
+
       return false;
     }
 
@@ -79,7 +82,12 @@ function getCallingDir() {
  * @returns {string}      The directory path.
  */
 function getRoot(obj) {
-  return obj.dir || getCallingDir();
+  if(obj) {
+    if(obj.dir) {
+      return getCallingDir(obj.dir);
+    }
+  }
+  return getCallingDir();
 }
 
 /**
