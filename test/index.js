@@ -9,7 +9,26 @@ var jsDoc = require('./index.json');
 var requireX = require('../index.js');
 var expect = require('chai').expect;
 var path = require('path');
+var mockFs = require('mock-fs');
 
+
+/**
+ * Create a mock file systyem for testing purposes.
+ *
+ * @private
+ */
+function setupMockFileSystem(){
+  var startingDir = __dirname + '/../forTests';
+  var mockFsSetup = {};
+  mockFsSetup[startingDir] = {
+    'testModule1.js': 'module.exports = {\'testParam\': 1};',
+    'testModule2.js': 'module.exports = {\'testParam\': 2};',
+    'testModule1-2.js': 'module.exports = {\'testParam\': require(\'./testModule2.js\')};',
+    'testModuleWithError.js': 'var error = b/100;module.exports = {\'testParam\': 1};'
+  };
+
+  mockFs(mockFsSetup);
+}
 
 /**
  * Generate a description for a describe clause using the info in an object.
@@ -29,6 +48,8 @@ function describeItem(items, itemName) {
 
 
 describe(describeItem(packageInfo), function() {
+  setupMockFileSystem();
+
   it('Should export a function with 3 method: resolve, getModule and getResolver', function() {
     expect(requireX).to.be.a('function');
     ['resolve', 'getModule', 'getResolver'].forEach(function(method) {
@@ -127,8 +148,6 @@ describe(describeItem(packageInfo), function() {
         });
       });
     });
-
-
   });
 
   describe(describeItem(jsDoc, 'resolveModulePath'), function() {
