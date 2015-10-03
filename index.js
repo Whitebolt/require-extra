@@ -1,4 +1,4 @@
-/*jshint node: true */
+/* jshint node: true */
 
 /**
  * @external bluebird
@@ -60,7 +60,7 @@ function getCallingDir() {
 
   callsite().every(function(trace) {
     var traceFile = trace.getFileName();
-    if(traceFile !== __filename){
+    if((traceFile !== __filename) && (!trace.isNative())){
       dir = path.dirname(traceFile);
       return false;
     }
@@ -227,7 +227,7 @@ function requireAsync(userResolver, moduleName, callback) {
   var async;
   if (_.isArray(moduleName)){
     async = Promise.all(moduleName.map(function(moduleName) {
-      loader(userResolver, moduleName);
+      return loader(userResolver, moduleName);
     }));
   } else {
     async = loader(userResolver, moduleName);
