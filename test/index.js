@@ -25,7 +25,25 @@ function describeItem(items, itemName) {
 
 describe(describeItem(packageInfo), function() {
   describe(describeItem(jsDoc, 'requireAsync'), function() {
-    it('requireX', function() {
+    it('', function() {
+      // STUB
+    });
+  });
+
+  describe(describeItem(jsDoc, 'resolveModulePath'), function() {
+    it('', function() {
+      // STUB
+    });
+  });
+
+  describe(describeItem(jsDoc, 'getModule'), function() {
+    it('', function() {
+      // STUB
+    });
+  });
+
+  describe(describeItem(jsDoc, 'getResolver'), function() {
+    it('', function() {
       // STUB
     });
   });
