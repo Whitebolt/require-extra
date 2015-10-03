@@ -28,6 +28,9 @@
     "lodash": "^3.10.1"
   },
   "main": "./index.js",
+  "scripts": {
+    "test": "./bin/test"
+  },
   "repository": {
     "type": "git",
     "url": "https://github.com/ssimpo/require-extra.git"
@@ -36,5 +39,9 @@
   "bugs": {
     "url": "https://github.com/ssimpo/require-extra/issues"
   },
-  "devDependencies": {}
+  "devDependencies": {
+    "chai": "^3.3.0",
+    "jsdoc-parse": "^1.1.0",
+    "mocha": "^2.3.3"
+  }
 }
