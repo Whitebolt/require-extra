@@ -1,38 +1,4 @@
 {
-  "_args": [
-    [
-      "require-extra",
-      "/home/simpo/Projects/bolt2"
-    ]
-  ],
-  "_from": "require-extra@latest",
-  "_id": "require-extra@0.2.2",
-  "_inCache": true,
-  "_installable": true,
-  "_location": "/require-extra",
-  "_nodeVersion": "0.12.7",
-  "_npmUser": {
-    "email": "me@simpo.org",
-    "name": "simpo"
-  },
-  "_npmVersion": "2.14.0",
-  "_phantomChildren": {},
-  "_requested": {
-    "name": "require-extra",
-    "raw": "require-extra",
-    "rawSpec": "",
-    "scope": null,
-    "spec": "latest",
-    "type": "tag"
-  },
-  "_requiredBy": [
-    "/"
-  ],
-  "_resolved": "https://registry.npmjs.org/require-extra/-/require-extra-0.2.2.tgz",
-  "_shasum": "d56a52796403e162dcc791d55dda3d8d2ab07f16",
-  "_shrinkwrap": null,
-  "_spec": "require-extra",
-  "_where": "/home/simpo/Projects/bolt2",
   "author": {
     "email": "hello@whitebolt.net",
     "name": "Whitebolt"
@@ -96,5 +62,5 @@
   "scripts": {
     "test": "./bin/test"
   },
-  "version": "0.2.2"
+  "version": "0.2.3"
 }
