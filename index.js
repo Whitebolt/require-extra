@@ -167,11 +167,15 @@ function loadModuleText(fileName) {
  * @returns {*}
  */
 function evalModuleText(modulePath, moduleText) {
-  return (
-      (moduleText !== undefined)?
-          _eval(moduleText, modulePath, {}, true):
-          undefined
-  );
+	if (/\.json$/.test(modulePath)) {
+		return JSON.parse(moduleText);
+	} else {
+		return (
+			(moduleText !== undefined)?
+				_eval(moduleText, modulePath, {}, true):
+				undefined
+		);
+	}
 }
 
 /**

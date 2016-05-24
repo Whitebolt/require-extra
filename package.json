@@ -1,24 +1,54 @@
 {
-  "name": "require-extra",
-  "description": "NodeJs module loading with an asynchronous flavour",
-  "author": "Whitebolt <hello@whitebolt.net>",
+  "_args": [
+    [
+      "require-extra",
+      "/home/simpo/Projects/bolt2"
+    ]
+  ],
+  "_from": "require-extra@latest",
+  "_id": "require-extra@0.2.2",
+  "_inCache": true,
+  "_installable": true,
+  "_location": "/require-extra",
+  "_nodeVersion": "0.12.7",
+  "_npmUser": {
+    "email": "me@simpo.org",
+    "name": "simpo"
+  },
+  "_npmVersion": "2.14.0",
+  "_phantomChildren": {},
+  "_requested": {
+    "name": "require-extra",
+    "raw": "require-extra",
+    "rawSpec": "",
+    "scope": null,
+    "spec": "latest",
+    "type": "tag"
+  },
+  "_requiredBy": [
+    "/"
+  ],
+  "_resolved": "https://registry.npmjs.org/require-extra/-/require-extra-0.2.2.tgz",
+  "_shasum": "d56a52796403e162dcc791d55dda3d8d2ab07f16",
+  "_shrinkwrap": null,
+  "_spec": "require-extra",
+  "_where": "/home/simpo/Projects/bolt2",
+  "author": {
+    "email": "hello@whitebolt.net",
+    "name": "Whitebolt"
+  },
+  "bugs": {
+    "url": "https://github.com/ssimpo/require-extra/issues"
+  },
   "contributors": [
     {
-      "name": "Stephen Simpson",
-      "email": "stephen@whitebolt.net"
+      "email": "stephen@whitebolt.net",
+      "name": "Stephen Simpson"
     },
     {
-      "name": "Kristjan Allikas",
-      "email": "kris@whitebolt.net"
+      "email": "kris@whitebolt.net",
+      "name": "Kristjan Allikas"
     }
-  ],
-  "version": "0.2.0",
-  "keywords": [
-    "require",
-    "async",
-    "promises",
-    "module",
-    "bluebird"
   ],
   "dependencies": {
     "async-resolve": "~0.3.3",
@@ -27,23 +57,44 @@
     "eval": "~0.1.1",
     "lodash": "^3.10.1"
   },
-  "main": "./index.js",
-  "scripts": {
-    "test": "./bin/test"
-  },
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/ssimpo/require-extra.git"
-  },
-  "license": "MIT",
-  "bugs": {
-    "url": "https://github.com/ssimpo/require-extra/issues"
-  },
+  "description": "NodeJs module loading with an asynchronous flavour",
   "devDependencies": {
     "chai": "^3.3.0",
     "jsdoc-parse": "^1.1.0",
     "mocha": "^2.3.3",
-    "mock-env": "^0.1.3",
     "mock-fs": "^3.2.0"
-  }
+  },
+  "directories": {},
+  "dist": {
+    "shasum": "d56a52796403e162dcc791d55dda3d8d2ab07f16",
+    "tarball": "https://registry.npmjs.org/require-extra/-/require-extra-0.2.2.tgz"
+  },
+  "gitHead": "43ec6c588cc33f40f17f8f5c5077e6ce9c4667f7",
+  "homepage": "https://github.com/ssimpo/require-extra#readme",
+  "keywords": [
+    "require",
+    "async",
+    "promises",
+    "module",
+    "bluebird"
+  ],
+  "license": "MIT",
+  "main": "./index.js",
+  "maintainers": [
+    {
+      "email": "me@simpo.org",
+      "name": "simpo"
+    }
+  ],
+  "name": "require-extra",
+  "optionalDependencies": {},
+  "readme": "ERROR: No README data found!",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ssimpo/require-extra.git"
+  },
+  "scripts": {
+    "test": "./bin/test"
+  },
+  "version": "0.2.2"
 }
