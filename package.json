@@ -54,7 +54,7 @@
   ],
   "name": "require-extra",
   "optionalDependencies": {},
-  "readme": "ERROR: No README data found!",
+  "readme": "README.md",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/ssimpo/require-extra.git"

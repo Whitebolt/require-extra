@@ -73,7 +73,7 @@ function getCallingFileName() {
 }
 
 /**
- * Calculate the calling directory path by examing the stack-trace.
+ * Calculate the calling directory path by examining the stack-trace.
  *
  * @private
  * @returns {string}      Directory path
@@ -147,7 +147,7 @@ function makeArray(ary) {
 
 /**
  * Load a module or return a default value.  Can take an array to try.  Will
- * load module asychronously.
+ * load module asynchronously.
  *
  * @public
  * @param {string|Array} modulePath             Module path or array of paths.
@@ -236,7 +236,7 @@ function loader(userResolver, moduleName) {
 }
 
 /**
- * Load a module asychronously, this is an async version of require().  Will
+ * Load a module asynchronously, this is an async version of require().  Will
  * load a collection of modules if an array is supplied.  Will reject if module
  * is not found or on error.
  *
@@ -301,7 +301,7 @@ function filesInDirectory(dirPath, ext) {
 
 /**
  * Import an entire directory (excluding the file that does the import if it is
- * in ther same directory).
+ * in the same directory).
  *
  * @public
  * @param {string} dirPath                    Directory to import.
@@ -344,8 +344,8 @@ function importDirectory(dirPath, options) {
 }
 
 /**
- * Generate a new resolver object following specfic rules defined in the
- * options parametre. If no options are supplied, return a default resolver.
+ * Generate a new resolver object following specific rules defined in the
+ * options parameter. If no options are supplied, return a default resolver.
  *
  * @public
  * @param {Object} options    Options to pass to the resolver object
@@ -365,7 +365,7 @@ requireAsync.importDirectory = importDirectory;
  * NodeJs module loading with an asynchronous flavour
  *
  * @module require-extra
- * @version 0.2.0
+ * @version 0.3.0
  * @type {function}
  */
 module.exports = requireAsync;

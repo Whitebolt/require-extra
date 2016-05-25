@@ -226,6 +226,12 @@ describe(describeItem(packageInfo), function() {
       // STUB
     });
   });
+
+  describe(describeItem(jsDoc, 'importDirectory'), function() {
+    it('', function() {
+      // STUB
+    });
+  });
 });
 
 
