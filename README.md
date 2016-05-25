@@ -155,7 +155,7 @@ Each module is imported into its own property (unless the merge option is set to
 
 The second parameter, an options object, allows for greater control over the imports:
 
- - *extension: \[defaults to 'js'\]* Filter for files with this extension.
- - *imports: \[defaults to new object\]* Object to import into.
- - *callback:* Callback to run after each import will fire function(<Filename>, <Imported Module>).
- - *merge: \[defaults to false\]* Whether to merge imorted properties and methods together.
+ 1. **extension:** *\[defaults to 'js'\]* Filter for files with this extension.
+ 2. **imports:** *\[defaults to new object\]* Object to import into.
+ 3. **callback:** Callback to run after each import will fire function(<Filename>, <Imported Module>).
+ 4. **merge:** *\[defaults to false\]* Whether to merge imorted properties and methods together.
