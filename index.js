@@ -324,7 +324,11 @@ function importDirectory(dirPath, options) {
     if (fileName !== caller) {
       return requireAsync(fileName).then(function(mod) {
         if (options.merge === true) {
-          _.assign(imports, mod);
+          if (_.isFunction(mod)) {
+            imports[path.basename(fileName, '.' + ext)] = mod;
+          } else {
+            _.assign(imports, mod);
+          }
         } else {
           imports[path.basename(fileName, '.' + ext)] = mod;
         }
