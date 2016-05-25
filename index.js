@@ -285,7 +285,7 @@ function requireAsync(userResolver, moduleName, callback) {
  */
 function filesInDirectory(dirPath, ext) {
   ext = ext || '.js';
-  dirPath = getCallingDir();
+  dirPath = path.resolve(path.dirname(getCallingFileName()), dirPath);
   var xExt = new RegExp('\.' + ext);
 
   return readdir(dirPath).then(function(file) {
@@ -308,7 +308,10 @@ function filesInDirectory(dirPath, ext) {
  * @param {Object} [options]                  Import options.
  * @param {Object} [options.extension='js']   Extension of files to import.
  * @param {Object} [options.imports={}]       Object to import into.
- * @param {Object} [options.callback]        Callback to fire on each successful import.
+ * @param {Object} [options.callback]         Callback to fire on each
+ *                                            successful import.
+ * @param {Object} [options.merge=false]      Merge exported properties &
+ *                                            methods together.
  * @returns {bluebird}
  */
 function importDirectory(dirPath, options) {
@@ -316,11 +319,16 @@ function importDirectory(dirPath, options) {
   var ext = (options.extension ? options.extension : 'js');
   var imports = (options.imports ? options.imports : {});
 
-  var caller = getCallerFileName();
+  var caller = getCallingFileName();
   return filesInDirectory(dirPath).map(function(fileName)  {
     if (fileName !== caller) {
       return requireAsync(fileName).then(function(mod) {
-        imports[path.basename(fileName, '.' + ext)] = mod;
+        if (options.merge === true) {
+          _.assign(imports, mod);
+        } else {
+          imports[path.basename(fileName, '.' + ext)] = mod;
+        }
+
         if (options.callback) options.callback(fileName, mod);
       });
     } else {
