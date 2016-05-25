@@ -133,3 +133,29 @@ requireX.getModule(
   console.error('Failed loading module', error);
 });
 ```
+
+
+## Importing an entire directory
+The method *importDirectory()* will import all modules in a directory (excluding the calling module if it is in the same directory).  This is useful when loading order is not important and you want all modules in a specfic folder. Can be used
+to reduce config options in large modules, just drop the file in-place and no need to tell it to load.
+
+```javascript
+var requireX = require('require-extra');
+
+requireX.importDirectory(
+  '/somePath'
+).then(function(modules){
+  console.log('My module', modules);
+}, function(error){
+  console.error('Failed loading directory', error);
+});
+```
+
+Each module is imported into its own property (unless the merge option is set to true, see below).
+
+The second parameter, an options object, allows for greater control over the imports:
+
+ - *extension: \[defaults to 'js'\]* Filter for files with this extension.
+ - *imports: \[defaults to new object\]* Object to import into.
+ - *callback:* Callback to run after each import will fire function(<Filename>, <Imported Module>).
+ - *merge: \[defaults to false\]* Whether to merge imorted properties and methods together.
