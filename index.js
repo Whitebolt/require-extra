@@ -9,6 +9,7 @@
 
 var Promise = require('bluebird');  // jshint ignore:line
 var fs = require('fs');
+var readdir = Promise.promisify(fs.readdir);
 var path = require('path');
 var _eval = require('eval');
 var _ = require('lodash');
@@ -47,6 +48,28 @@ function resolveModulePath(userResolver, moduleName) {
         }
     );
   });
+}
+
+/**
+ * Calculate the calling filename by examing the stack-trace.
+ *
+ * @private
+ * @returns {string}      Filename of calling file.
+ */
+function getCallingFileName() {
+  var fileName;
+
+  callsite().every(function(trace) {
+    var traceFile = trace.getFileName();
+    if((traceFile !== __filename) && (!trace.isNative())){
+      fileName = traceFile;
+      return false;
+    }
+
+    return true;
+  });
+
+  return fileName;
 }
 
 /**
@@ -253,6 +276,62 @@ function requireAsync(userResolver, moduleName, callback) {
 }
 
 /**
+ * Get a list of files in the directory.
+ *
+ * @private
+ * @param {string} dirPath          Directory path to scan.
+ * @param {string} [ext='js']       File extension filter to use.
+ * @returns {bluebird}              Promise resolving to array of files.
+ */
+function filesInDirectory(dirPath, ext) {
+  ext = ext || '.js';
+  dirPath = getCallingDir();
+  var xExt = new RegExp('\.' + ext);
+
+  return readdir(dirPath).then(function(file) {
+    return file;
+  }, function(err) {
+    return [];
+  }).filter(function(fileName) {
+    return xExt.test(fileName);
+  }).map(function(fileName) {
+    return path.resolve(dirPath, fileName);
+  });
+}
+
+/**
+ * Import an entire directory (excluding the file that does the import if it is
+ * in ther same directory).
+ *
+ * @public
+ * @param {string} dirPath                    Directory to import.
+ * @param {Object} [options]                  Import options.
+ * @param {Object} [options.extension='js']   Extension of files to import.
+ * @param {Object} [options.imports={}]       Object to import into.
+ * @param {Object} [options.callback]        Callback to fire on each successful import.
+ * @returns {bluebird}
+ */
+function importDirectory(dirPath, options) {
+  options = options || {};
+  var ext = (options.extension ? options.extension : 'js');
+  var imports = (options.imports ? options.imports : {});
+
+  var caller = getCallerFileName();
+  return filesInDirectory(dirPath).map(function(fileName)  {
+    if (fileName !== caller) {
+      return requireAsync(fileName).then(function(mod) {
+        imports[path.basename(fileName, '.' + ext)] = mod;
+        if (options.callback) options.callback(fileName, mod);
+      });
+    } else {
+      return fileName;
+    }
+  }).then(function(fileNames) {
+    return imports;
+  });
+}
+
+/**
  * Generate a new resolver object following specfic rules defined in the
  * options parametre. If no options are supplied, return a default resolver.
  *
@@ -268,6 +347,7 @@ function getResolver(options) {
 requireAsync.resolve = resolveModulePath;
 requireAsync.getModule = getModule;
 requireAsync.getResolver = getResolver;
+requireAsync.importDirectory = importDirectory;
 
 /**
  * NodeJs module loading with an asynchronous flavour
