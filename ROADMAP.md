@@ -15,4 +15,5 @@
 1. Ability to optionally load modules in-sequence; hence, avoiding any cache race style inefficiencies.
 2. Tackle potential cache race by reworking the internal code evaling.
 3. Add an on() method for loading events (like requireJs).
-4. Add plugin support
+4. Add plugin support.
+5. Fix global problem.  Modules copy the global scope meaning later additions to global are not reflected.  This is difficult to fix without major hack as Javascript proxies do not work as vm contexts.  This may become possible when V8 get's updated as proxies are still a work in-progress.
