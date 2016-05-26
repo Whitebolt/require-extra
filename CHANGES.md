@@ -1,3 +1,6 @@
+## Version 0.3.0
+1. Added an importDirectory() method to load all modules in a directory.
+
 ## Version 0.2.0
 
 1. New method getResolver() to export a resolver class instance.
