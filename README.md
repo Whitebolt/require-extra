@@ -155,7 +155,7 @@ Each module is imported into its own property (unless the merge option is set to
 
 The second parameter, an options object, allows for greater control over the imports:
 
- 1. **extension:** *\[defaults to \['.js', '.json', '.node'\]* Filter for files with this extension.  Defaults to the default for the resolver class (currently node standard of .js, .json, .node). Can pass an array here or a string containing one extension name.
+ 1. **extension:** *\[defaults to \['.js', '.json', '.node'\]\]* Filter for files with this extension.  Defaults to the default for the resolver class (currently node standard of .js, .json, .node). Can pass an array here or a string containing one extension name.
  2. **imports:** *\[defaults to new object\]* Object to import into.
  3. **callback:** Callback to run after each import will fire function(<Filename>, <Imported Module>).
  4. **merge:** *\[defaults to false\]* Whether to merge imorted properties and methods together.
