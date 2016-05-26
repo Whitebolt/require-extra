@@ -17,7 +17,7 @@ var resolver = new (require('async-resolve'))();
 var callsite = require('callsite');
 
 var readFile = Promise.promisify(fs.readFile);
-var defaultExt = ['js', 'json', 'node'];
+var defaultExt = resolver.getState().extensions;
 
 
 /**
@@ -323,7 +323,7 @@ function getFileName(filePath, ext) {
 function getExtensionRegEx(ext) {
   ext = (ext || defaultExt);
   ext = '(?:' + (Array.isArray(ext)?ext:[ext]).join('|') + ')';
-  return new RegExp('\.' + ext + '$');
+  return new RegExp(ext + '$');
 }
 
 /**
