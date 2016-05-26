@@ -17,6 +17,7 @@ var resolver = new (require('async-resolve'))();
 var callsite = require('callsite');
 
 var readFile = Promise.promisify(fs.readFile);
+var defaultExt = ['js', 'json', 'node'];
 
 
 /**
@@ -279,14 +280,13 @@ function requireAsync(userResolver, moduleName, callback) {
  * Get a list of files in the directory.
  *
  * @private
- * @param {string} dirPath          Directory path to scan.
- * @param {string} [ext='js']       File extension filter to use.
- * @returns {bluebird}              Promise resolving to array of files.
+ * @param {string} dirPath            Directory path to scan.
+ * @param {string} [ext=defaultExt]   File extension filter to use.
+ * @returns {bluebird}                Promise resolving to array of files.
  */
 function filesInDirectory(dirPath, ext) {
-  ext = ext || '.js';
   dirPath = path.resolve(path.dirname(getCallingFileName()), dirPath);
-  var xExt = new RegExp('\.' + ext);
+  var xExt = getExtensionRegEx(ext);
 
   return readdir(dirPath).then(function(file) {
     return file;
@@ -300,37 +300,67 @@ function filesInDirectory(dirPath, ext) {
 }
 
 /**
+ * Take a file path and return the filename (without an extension).  Possible
+ * extensions are passed in or the module default is used.
+ *
+ * @private
+ * @param {string} filePath                 File path to get filename from.
+ * @param {Array|string} [ext=defaultExt]   File extension(s) to remove.
+ * @returns {string}                        The filename without given extension(s).
+ */
+function getFileName(filePath, ext) {
+  return path.basename(filePath).replace(getExtensionRegEx(ext), '');
+}
+
+/**
+ * Get a regular expression for the given selection of file extensions, which
+ * will then be able to match file paths, which have those extensions.
+ *
+ * @private
+ * @param {Array|string} [ext=defaultExt]     The extension(s).
+ * @returns {RegExp}                          File path matcher.
+ */
+function getExtensionRegEx(ext) {
+  ext = (ext || defaultExt);
+  ext = '(?:' + (Array.isArray(ext)?ext:[ext]).join('|') + ')';
+  return new RegExp('\.' + ext + '$');
+}
+
+/**
  * Import an entire directory (excluding the file that does the import if it is
  * in the same directory).
  *
  * @public
- * @param {string} dirPath                    Directory to import.
- * @param {Object} [options]                  Import options.
- * @param {Object} [options.extension='js']   Extension of files to import.
- * @param {Object} [options.imports={}]       Object to import into.
- * @param {Object} [options.callback]         Callback to fire on each
- *                                            successful import.
- * @param {Object} [options.merge=false]      Merge exported properties &
- *                                            methods together.
+ * @param {string} dirPath                                Directory to import.
+ * @param {Object} [options]                              Import options.
+ * @param {Array|string} [options.extension=defaultExt]   Extension of files
+ *                                                        to import.
+ * @param {Object} [options.imports={}]                   Object to
+ *                                                        import into.
+ * @param {Function} [options.callback]                   Callback to fire
+ *                                                        on each
+ *                                                        successful import.
+ * @param {boolean} [options.merge=false]                 Merge exported
+ *                                                        properties & methods
+ *                                                        together.
  * @returns {bluebird}
  */
 function importDirectory(dirPath, options) {
   options = options || {};
-  var ext = (options.extension ? options.extension : 'js');
   var imports = (options.imports ? options.imports : {});
 
   var caller = getCallingFileName();
-  return filesInDirectory(dirPath).map(function(fileName)  {
+  return filesInDirectory(dirPath, options.extension).map(function(fileName)  {
     if (fileName !== caller) {
       return requireAsync(fileName).then(function(mod) {
         if (options.merge === true) {
           if (_.isFunction(mod)) {
-            imports[path.basename(fileName, '.' + ext)] = mod;
+            imports[getFileName(fileName, options.extension)] = mod;
           } else {
             _.assign(imports, mod);
           }
         } else {
-          imports[path.basename(fileName, '.' + ext)] = mod;
+          imports[getFileName(fileName, options.extension)] = mod;
         }
 
         if (options.callback) options.callback(fileName, mod);
@@ -365,7 +395,7 @@ requireAsync.importDirectory = importDirectory;
  * NodeJs module loading with an asynchronous flavour
  *
  * @module require-extra
- * @version 0.3.0
+ * @version 0.3.1
  * @type {function}
  */
 module.exports = requireAsync;

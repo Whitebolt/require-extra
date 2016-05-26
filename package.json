@@ -20,7 +20,7 @@
     "async-resolve": "~0.3.3",
     "bluebird": "^2.9.34",
     "callsite": "^1.0.0",
-    "eval": "~0.1.1",
+    "eval": "^0.1.1",
     "lodash": "^3.10.1"
   },
   "description": "NodeJs module loading with an asynchronous flavour",
@@ -62,5 +62,5 @@
   "scripts": {
     "test": "./bin/test"
   },
-  "version": "0.3.0"
+  "version": "0.3.1"
 }
