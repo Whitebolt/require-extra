@@ -20,7 +20,7 @@
     "async-resolve": "~0.3.3",
     "bluebird": "^3.4.0",
     "callsite": "^1.0.0",
-    "eval": "https://github.com/ssimpo/node-eval.git",
+    "require-like": ">= 0.1.1",
     "lodash": "^4.13.1"
   },
   "description": "NodeJs module loading with an asynchronous flavour",
@@ -61,5 +61,5 @@
   "scripts": {
     "test": "./bin/test"
   },
-  "version": "0.3.5"
+  "version": "0.3.6"
 }
