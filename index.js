@@ -353,6 +353,8 @@ function importDirectory(dirPath, options) {
   return filesInDirectory(dirPath, options.extension).map(function(fileName)  {
     if (fileName !== caller) {
       return requireAsync(fileName).then(function(mod) {
+        return Promise.resolve(mod);
+      }).then(function(mod) {
         if (options.merge === true) {
           if (_.isFunction(mod)) {
             imports[getFileName(fileName, options.extension)] = mod;
