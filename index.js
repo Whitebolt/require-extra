@@ -160,13 +160,8 @@ function getModule(modulePath, defaultReturnValue) {
   if (modulePath) {
     modulePath = makeArray(modulePath);
     return requireAsync(modulePath.shift()).catch(function(error) {
-      if(modulePath.length){
-        return requireAsync(modulePath);
-      }
-
+      if(modulePath.length) return getModule(modulePath, defaultReturnValue);
       return Promise.resolve([defaultReturnValue] || false);
-    }).then(function(values) {
-      return values[0];
     });
   }
 
