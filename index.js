@@ -164,7 +164,9 @@ function getModule(modulePath, defaultReturnValue) {
         return requireAsync(modulePath);
       }
 
-      return Promise.resolve(defaultReturnValue || false);
+      return Promise.resolve([defaultReturnValue] || false);
+    }).then(function(values) {
+      return values[0];
     });
   }
 
