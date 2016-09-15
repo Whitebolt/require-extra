@@ -341,7 +341,7 @@ function getFileTests(fileName, options) {
 
 function canImport(fileName, caller, options) {
   if (fileName === caller) return false;
-  let _fileName = path.basename(fileName);
+  let _fileName = getFileTests(fileName, options);
   if (options.includes) return (_.intersection(options.includes, _fileName).length > 0);
   if (options.excludes) return (_.intersection(options.includes, _fileName).length === 0);
   return true;
