@@ -322,8 +322,29 @@ function getFileName(filePath, ext) {
  */
 function getExtensionRegEx(ext) {
   ext = (ext || defaultExt);
-  ext = '(?:' + (Array.isArray(ext)?ext:[ext]).join('|') + ')';
+  ext = '(?:' + makeArray(ext).join('|') + ')';
   return new RegExp(ext + '$');
+}
+
+function getFileTests(fileName, options) {
+  return _.uniq(
+    [path.basename(fileName)].concat(
+      makeArray(options.extension || defaultExt).map(function(ext) {
+        return path.basename(fileName, ext);
+      }
+     )
+    )
+  ).filter(function(value){
+    return value;
+  });
+}
+
+function canImport(fileName, caller, options) {
+  if (fileName === caller) return false;
+  let _fileName = path.basename(fileName);
+  if (options.includes) return (_.intersection(options.includes, _fileName).length > 0);
+  if (options.excludes) return (_.intersection(options.includes, _fileName).length === 0);
+  return true;
 }
 
 /**
@@ -348,10 +369,9 @@ function getExtensionRegEx(ext) {
 function importDirectory(dirPath, options) {
   options = options || {};
   var imports = (options.imports ? options.imports : {});
-
   var caller = getCallingFileName();
   return filesInDirectory(dirPath, options.extension).map(function(fileName)  {
-    if (fileName !== caller) {
+    if (canImport(fileName, caller, options)) {
       return requireAsync(fileName).then(function(mod) {
         return Promise.resolve(mod);
       }).then(function(mod) {
