@@ -34,9 +34,9 @@ function resolveModulePath(userResolver, moduleName) {
   moduleName = moduleName || userResolver;
   userResolver = userResolver || resolver;
 
-  var dir = getRoot(userResolver);
+  var dir = _getRoot(userResolver);
   return new Promise(function(resolve, reject) {
-    getResolve(userResolver).resolve(
+    _getResolve(userResolver).resolve(
         moduleName,
         dir,
 
@@ -57,7 +57,7 @@ function resolveModulePath(userResolver, moduleName) {
  * @private
  * @returns {string}      Filename of calling file.
  */
-function getCallingFileName() {
+function _getCallingFileName() {
   var fileName;
 
   callsite().every(function(trace) {
@@ -80,7 +80,7 @@ function getCallingFileName() {
  * @param {string} resolveTo    The directory to resolve to.
  * @returns {string}            Directory path
  */
-function getCallingDir(resolveTo) {
+function _getCallingDir(resolveTo) {
   callsite().every(function(trace) {
     var traceFile = trace.getFileName();
     if((traceFile !== __filename) && (!trace.isNative())){
@@ -106,13 +106,13 @@ function getCallingDir(resolveTo) {
  * @param {Object} obj    The options object containing a 'dir' property.
  * @returns {string}      The directory path.
  */
-function getRoot(obj) {
+function _getRoot(obj) {
   if(obj) {
     if(obj.dir) {
-      return getCallingDir(obj.dir);
+      return _getCallingDir(obj.dir);
     }
   }
-  return getCallingDir();
+  return _getCallingDir();
 }
 
 /**
@@ -124,7 +124,7 @@ function getRoot(obj) {
  * @param {Object} obj    Object to get resolver from.
  * @returns {Object}      The resolver object.
  */
-function getResolve(obj) {
+function _getResolve(obj) {
   if(obj){
     return (obj.resolver || obj.resolve?obj:resolver);
   }
@@ -139,7 +139,7 @@ function getResolve(obj) {
  * @param {Array|*} ary     Value to return as an array
  * @returns {Array}
  */
-function makeArray(ary) {
+function _makeArray(ary) {
   return (
       (ary === undefined)?
           []:
@@ -166,7 +166,7 @@ function getModule(useSync, modulePath, defaultReturnValue) {
 
   var _require = (useSync ? _requireSync : requireAsync);
   if (modulePath) {
-    modulePath = makeArray(modulePath);
+    modulePath = _makeArray(modulePath);
     return _require(modulePath.shift()).catch(function(error) {
       if(modulePath.length) return getModule(modulePath, defaultReturnValue);
       return Promise.resolve([defaultReturnValue] || false);
@@ -183,7 +183,7 @@ function getModule(useSync, modulePath, defaultReturnValue) {
  * @param {string} fileName
  * @returns {bluebird}
  */
-function loadModuleText(fileName) {
+function _loadModuleText(fileName) {
   return readFile(fileName, 'utf8');
 }
 
@@ -195,7 +195,7 @@ function loadModuleText(fileName) {
  * @param {string} moduleText   The text content of the module.
  * @returns {*}
  */
-function evalModuleText(modulePath, moduleText) {
+function _evalModuleText(modulePath, moduleText) {
 	if (/\.json$/.test(modulePath)) {
 		return JSON.parse(moduleText);
 	} else {
@@ -215,9 +215,9 @@ function evalModuleText(modulePath, moduleText) {
  * @param {string} modulePath   The path of the evaluated module.
  * @returns {*}
  */
-function loadModule(modulePath) {
-  return loadModuleText(modulePath).then(function(moduleText) {
-    return evalModuleText(modulePath, moduleText);
+function _loadModule(modulePath) {
+  return _loadModuleText(modulePath).then(function(moduleText) {
+    return _evalModuleText(modulePath, moduleText);
   });
 }
 
@@ -233,7 +233,7 @@ function loadModule(modulePath) {
  * @param {string} modulePath   The path of the evaluated module.
  * @returns {*}
  */
-function loadModuleSync(modulePath) {
+function _loadModuleSync(modulePath) {
   return new Promise((resolve, reject)=>{
     process.nextTick(function(){
       try {
@@ -259,7 +259,7 @@ function loadModuleSync(modulePath) {
  *                                              this module, which is async.
  * @returns {bluebird}
  */
-function loader(userResolver, moduleName, useSyncResolve) {
+function _loader(userResolver, moduleName, useSyncResolve) {
   if (arguments.length === 1) {
     userResolver = resolver;
     useSyncResolve = false;
@@ -272,7 +272,7 @@ function loader(userResolver, moduleName, useSyncResolve) {
   }
 
   return resolveModulePath(userResolver, moduleName).then(function(modulePath) {
-    return (useSyncResolve?loadModuleSync:loadModule)(modulePath);
+    return (useSyncResolve?_loadModuleSync:_loadModule)(modulePath);
   }, function(error) {
     return Promise.reject(error);
   });
@@ -283,7 +283,7 @@ function loader(userResolver, moduleName, useSyncResolve) {
  * load a collection of modules if an array is supplied.  Will reject if module
  * is not found or on error.
  *
- * @public
+ * @private
  * @param {Object} [userResolver=resolver]      User-created resolver function
  *                                              or an options object.
  * @param {string|Array} moduleName             Module name or path (or
@@ -303,10 +303,10 @@ function _requireX(userResolver, moduleName, callback, useSyncResolve) {
   var async;
   if (_.isArray(moduleName)){
     async = Promise.all(moduleName.map(function(moduleName) {
-      return loader(userResolver, moduleName, useSyncResolve);
+      return _loader(userResolver, moduleName, useSyncResolve);
     }));
   } else {
-    async = loader(userResolver, moduleName, useSyncResolve);
+    async = _loader(userResolver, moduleName, useSyncResolve);
   }
 
   if (callback) {
@@ -321,7 +321,7 @@ function _requireX(userResolver, moduleName, callback, useSyncResolve) {
  * load a collection of modules if an array is supplied.  Will reject if module
  * is not found or on error.
  *
- * @private
+ * @public
  * @param {Object} [userResolver=resolver]      User-created resolver function
  *                                              or an options object.
  * @param {string|Array} moduleName             Module name or path (or
@@ -381,9 +381,9 @@ function _requireSync(userResolver, moduleName, callback) {
  * @param {string} [ext=defaultExt]   File extension filter to use.
  * @returns {bluebird}                Promise resolving to array of files.
  */
-function filesInDirectory(dirPath, ext) {
-  dirPath = path.resolve(path.dirname(getCallingFileName()), dirPath);
-  var xExt = getExtensionRegEx(ext);
+function _filesInDirectory(dirPath, ext) {
+  dirPath = path.resolve(path.dirname(_getCallingFileName()), dirPath);
+  var xExt = _getExtensionRegEx(ext);
 
   return readdir(dirPath).then(function(file) {
     return file;
@@ -405,8 +405,8 @@ function filesInDirectory(dirPath, ext) {
  * @param {Array|string} [ext=defaultExt]   File extension(s) to remove.
  * @returns {string}                        The filename without given extension(s).
  */
-function getFileName(filePath, ext) {
-  return path.basename(filePath).replace(getExtensionRegEx(ext), '');
+function _getFileName(filePath, ext) {
+  return path.basename(filePath).replace(_getExtensionRegEx(ext), '');
 }
 
 /**
@@ -417,9 +417,9 @@ function getFileName(filePath, ext) {
  * @param {Array|string} [ext=defaultExt]     The extension(s).
  * @returns {RegExp}                          File path matcher.
  */
-function getExtensionRegEx(ext) {
+function _getExtensionRegEx(ext) {
   ext = (ext || defaultExt);
-  ext = '(?:' + makeArray(ext).join('|') + ')';
+  ext = '(?:' + _makeArray(ext).join('|') + ')';
   return new RegExp(ext + '$');
 }
 
@@ -431,10 +431,10 @@ function getExtensionRegEx(ext) {
  * @param {Object} [options]  Options containing the file extension (or not).
  * @returns {Array}
  */
-function getFileTests(fileName, options) {
+function _getFileTests(fileName, options) {
   options = options || {};
 
-  var extension =  makeArray(options.extension || defaultExt);
+  var extension =  _makeArray(options.extension || defaultExt);
   return _.uniq(
     [path.basename(fileName)].concat(
       extension.map(function(ext) {
@@ -456,9 +456,9 @@ function getFileTests(fileName, options) {
  * @param {Object} options          Import/Export options.
  * @returns {boolean}
  */
-function canImport(fileName, callingFileName, options) {
+function _canImport(fileName, callingFileName, options) {
   if (fileName === callingFileName) return false;
-  var _fileName = getFileTests(fileName, options);
+  var _fileName = _getFileTests(fileName, options);
   if (options.includes) return (_.intersection(options.includes, _fileName).length > 0);
   if (options.excludes) return (_.intersection(options.includes, _fileName).length === 0);
   return true;
@@ -486,22 +486,22 @@ function canImport(fileName, callingFileName, options) {
 function importDirectory(dirPath, options) {
   options = options || {};
   var imports = (options.imports ? options.imports : {});
-  var caller = getCallingFileName();
+  var caller = _getCallingFileName();
   var _require = (options.useSyncRequire ? _requireSync : requireAsync);
 
-  return filesInDirectory(dirPath, options.extension).map(function(fileName)  {
-    if (canImport(fileName, caller, options)) {
+  return _filesInDirectory(dirPath, options.extension).map(function(fileName)  {
+    if (_canImport(fileName, caller, options)) {
       return _require(fileName).then(function(mod) {
         return Promise.resolve(mod);
       }).then(function(mod) {
         if (options.merge === true) {
           if (_.isFunction(mod)) {
-            imports[getFileName(fileName, options.extension)] = mod;
+            imports[_getFileName(fileName, options.extension)] = mod;
           } else {
             _.assign(imports, mod);
           }
         } else {
-          imports[getFileName(fileName, options.extension)] = mod;
+          imports[_getFileName(fileName, options.extension)] = mod;
         }
 
         if (options.callback) options.callback(fileName, mod);
@@ -536,7 +536,7 @@ requireAsync.importDirectory = importDirectory;
  * NodeJs module loading with an asynchronous flavour
  *
  * @module require-extra
- * @version 0.3.1
+ * @version 0.3.11
  * @type {function}
  */
 module.exports = requireAsync;

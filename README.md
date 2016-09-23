@@ -134,6 +134,26 @@ requireX.getModule(
 });
 ```
 
+You can also use the native require by passing ***true*** as the first option to *getModule*. This is useful if you want to to try different module paths but do not want to use an async require.  The method still returns a promise and the requires are actually done on *nextTick()* but using the native node *require()*.
+
+```javascript
+var requireX = require('require-extra');
+
+requireX.getModule(
+  true
+  ['/somePath', '../some/other/path'], null
+).then(function(someModule){
+  if(someModule !== null){
+    console.log('Module found');
+  }else{
+    console.warn('Module not found');
+  }
+}, function(error){
+  console.error('Failed loading module', error);
+});
+```
+
+
 
 ## Importing an entire directory
 The method *importDirectory()* will import all modules in a directory (excluding the calling module if it is in the same directory).  This is useful when loading order is not important and you want all modules in a specfic folder. Can be used
@@ -159,3 +179,4 @@ The second parameter, an options object, allows for greater control over the imp
  2. **imports:** *\[defaults to new object\]* Object to import into.
  3. **callback:** Callback to run after each import will fire function(<Filename>, <Imported Module>).
  4. **merge:** *\[defaults to false\]* Whether to merge imorted properties and methods together.
+ 5. **useSyncRequire** *\[defaults to false\]* Whether to use the native node require or the async version in this module.
