@@ -112,7 +112,7 @@ function _getRoot(obj) {
  * @returns {Object}      The resolver object.
  */
 function _getResolve(obj) {
-  return (obj ? (obj.resolver || obj.resolve?obj:resolver) : resolver);
+  return (obj ? (obj.resolver || (obj.resolve?obj:resolver)) : resolver);
 }
 
 /**
@@ -120,11 +120,11 @@ function _getResolve(obj) {
  * Undefined will return an empty array.
  *
  * @private
- * @param {Array|*} ary     Value to return as an array
+ * @param {Array|*} [ary=[]]     Value to return as an array
  * @returns {Array}
  */
-function _makeArray(ary) {
-  return ((ary === undefined) ? []: (_.isArray(ary)?ary:[ary]));
+function _makeArray(ary=[]) {
+  return (_.isArray(ary)?ary:[ary]);
 }
 
 /**
@@ -278,7 +278,7 @@ function _loader(userResolver, moduleName, useSyncResolve) {
  * @returns {bluebird}                          Promise, resolved with the
  *                                              module(s) or undefined.
  */
-function _requireX(userResolver, moduleName, callback, useSyncResolve) {
+function _requireX(userResolver, moduleName, callback, useSyncResolve=false) {
   let async;
   if (_.isArray(moduleName)){
     async = Promise.all(moduleName.map(
@@ -360,7 +360,7 @@ function _requireSync(userResolver, moduleName, callback) {
  * @param {string} [ext=defaultExt]   File extension filter to use.
  * @returns {bluebird}                Promise resolving to array of files.
  */
-function _filesInDirectory(dirPath, ext) {
+function _filesInDirectory(dirPath, ext=defaultExt) {
   dirPath = path.resolve(path.dirname(_getCallingFileName()), dirPath);
   let xExt = _getExtensionRegEx(ext);
 
@@ -382,7 +382,7 @@ function _filesInDirectory(dirPath, ext) {
  * @param {Array|string} [ext=defaultExt]   File extension(s) to remove.
  * @returns {string}                        The filename without given extension(s).
  */
-function _getFileName(filePath, ext) {
+function _getFileName(filePath, ext=defaultExt) {
   return path.basename(filePath).replace(_getExtensionRegEx(ext), '');
 }
 
@@ -394,10 +394,9 @@ function _getFileName(filePath, ext) {
  * @param {Array|string} [ext=defaultExt]     The extension(s).
  * @returns {RegExp}                          File path matcher.
  */
-function _getExtensionRegEx(ext) {
-  ext = (ext || defaultExt);
-  ext = '(?:' + _makeArray(ext).join('|') + ')';
-  return new RegExp(ext + '$');
+function _getExtensionRegEx(ext=defaultExt) {
+  let _ext = '(?:' + _makeArray(ext).join('|') + ')';
+  return new RegExp(_ext + '$');
 }
 
 /**
@@ -408,9 +407,7 @@ function _getExtensionRegEx(ext) {
  * @param {Object} [options]  Options containing the file extension (or not).
  * @returns {Array}
  */
-function _getFileTests(fileName, options) {
-  options = options || {};
-
+function _getFileTests(fileName, options={}) {
   let extension =  _makeArray(options.extension || defaultExt);
   return _.uniq(
     [path.basename(fileName)].concat(
