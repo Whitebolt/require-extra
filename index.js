@@ -35,19 +35,11 @@ function resolveModulePath(userResolver, moduleName) {
   userResolver = userResolver || resolver;
 
   let dir = _getRoot(userResolver);
-  return new Promise(function(resolve, reject) {
-    _getResolve(userResolver).resolve(
-        moduleName,
-        dir,
-
-        function(err, modulePath) {
-          if (err) {
-            return reject(err);
-          }
-
-          return resolve(modulePath);
-        }
-    );
+  return new Promise((resolve, reject)=>{
+    _getResolve(userResolver).resolve(moduleName, dir, (err, modulePath)=>{
+      if (err) return reject(err);
+      return resolve(modulePath);
+    });
   });
 }
 
@@ -60,7 +52,7 @@ function resolveModulePath(userResolver, moduleName) {
 function _getCallingFileName() {
   let fileName;
 
-  callsite().every(function(trace) {
+  callsite().every(trace=>{
     let traceFile = trace.getFileName();
     if((traceFile !== __filename) && (!trace.isNative())){
       fileName = traceFile;
@@ -81,7 +73,7 @@ function _getCallingFileName() {
  * @returns {string}            Directory path
  */
 function _getCallingDir(resolveTo) {
-  callsite().every(function(trace) {
+  callsite().every(trace=>{
     let traceFile = trace.getFileName();
     if((traceFile !== __filename) && (!trace.isNative())){
       if(resolveTo){
@@ -107,12 +99,7 @@ function _getCallingDir(resolveTo) {
  * @returns {string}      The directory path.
  */
 function _getRoot(obj) {
-  if(obj) {
-    if(obj.dir) {
-      return _getCallingDir(obj.dir);
-    }
-  }
-  return _getCallingDir();
+  return ((obj && obj.dir) ? _getCallingDir(obj.dir) : _getCallingDir());
 }
 
 /**
@@ -125,10 +112,7 @@ function _getRoot(obj) {
  * @returns {Object}      The resolver object.
  */
 function _getResolve(obj) {
-  if(obj){
-    return (obj.resolver || obj.resolve?obj:resolver);
-  }
-  return resolver;
+  return (obj ? (obj.resolver || obj.resolve?obj:resolver) : resolver);
 }
 
 /**
@@ -140,11 +124,7 @@ function _getResolve(obj) {
  * @returns {Array}
  */
 function _makeArray(ary) {
-  return (
-      (ary === undefined)?
-          []:
-          (_.isArray(ary)?ary:[ary])
-  );
+  return ((ary === undefined) ? []: (_.isArray(ary)?ary:[ary]));
 }
 
 /**
@@ -167,7 +147,7 @@ function getModule(useSync, modulePath, defaultReturnValue) {
   let _require = (useSync ? _requireSync : requireAsync);
   if (modulePath) {
     modulePath = _makeArray(modulePath);
-    return _require(modulePath.shift()).catch(function(error) {
+    return _require(modulePath.shift()).catch(error=>{
       if(modulePath.length) return getModule(modulePath, defaultReturnValue);
       return Promise.resolve([defaultReturnValue] || false);
     });
@@ -216,9 +196,9 @@ function _evalModuleText(modulePath, moduleText) {
  * @returns {*}
  */
 function _loadModule(modulePath) {
-  return _loadModuleText(modulePath).then(function(moduleText) {
-    return _evalModuleText(modulePath, moduleText);
-  });
+  return _loadModuleText(modulePath).then(
+    moduleText=>_evalModuleText(modulePath, moduleText)
+  );
 }
 
 /**
@@ -235,7 +215,7 @@ function _loadModule(modulePath) {
  */
 function _loadModuleSync(modulePath) {
   return new Promise((resolve, reject)=>{
-    process.nextTick(function(){
+    process.nextTick(()=>{
       try {
         let mod = require(modulePath);
         resolve(mod);
@@ -271,11 +251,10 @@ function _loader(userResolver, moduleName, useSyncResolve) {
     useSyncResolve = false;
   }
 
-  return resolveModulePath(userResolver, moduleName).then(function(modulePath) {
-    return (useSyncResolve?_loadModuleSync:_loadModule)(modulePath);
-  }, function(error) {
-    return Promise.reject(error);
-  });
+  return resolveModulePath(userResolver, moduleName).then(
+    modulePath=>(useSyncResolve?_loadModuleSync:_loadModule)(modulePath),
+    error=>Promise.reject(error)
+  );
 }
 
 /**
@@ -302,9 +281,9 @@ function _loader(userResolver, moduleName, useSyncResolve) {
 function _requireX(userResolver, moduleName, callback, useSyncResolve) {
   let async;
   if (_.isArray(moduleName)){
-    async = Promise.all(moduleName.map(function(moduleName) {
-      return _loader(userResolver, moduleName, useSyncResolve);
-    }));
+    async = Promise.all(moduleName.map(
+      moduleName=>_loader(userResolver, moduleName, useSyncResolve)
+    ));
   } else {
     async = _loader(userResolver, moduleName, useSyncResolve);
   }
@@ -385,15 +364,13 @@ function _filesInDirectory(dirPath, ext) {
   dirPath = path.resolve(path.dirname(_getCallingFileName()), dirPath);
   let xExt = _getExtensionRegEx(ext);
 
-  return readdir(dirPath).then(function(file) {
-    return file;
-  }, function(err) {
-    return [];
-  }).filter(function(fileName) {
-    return xExt.test(fileName);
-  }).map(function(fileName) {
-    return path.resolve(dirPath, fileName);
-  });
+  return readdir(dirPath).then(
+    file=>file, err=>[]
+  ).filter(
+    fileName=>xExt.test(fileName)
+  ).map(
+    fileName=>path.resolve(dirPath, fileName)
+  );
 }
 
 /**
@@ -437,14 +414,10 @@ function _getFileTests(fileName, options) {
   let extension =  _makeArray(options.extension || defaultExt);
   return _.uniq(
     [path.basename(fileName)].concat(
-      extension.map(function(ext) {
-        return path.basename(fileName, ext);
-      }
+      extension.map(ext=>path.basename(fileName, ext)
      )
     )
-  ).filter(function(value){
-    return value;
-  });
+  ).filter(value=>value);
 }
 
 /**
@@ -489,11 +462,11 @@ function importDirectory(dirPath, options) {
   let caller = _getCallingFileName();
   let _require = (options.useSyncRequire ? _requireSync : requireAsync);
 
-  return _filesInDirectory(dirPath, options.extension).map(function(fileName)  {
+  return _filesInDirectory(dirPath, options.extension).map(fileName=>{
     if (_canImport(fileName, caller, options)) {
-      return _require(fileName).then(function(mod) {
-        return Promise.resolve(mod);
-      }).then(function(mod) {
+      return _require(fileName).then(
+        mod=>Promise.resolve(mod)
+      ).then(mod=>{
         if (options.merge === true) {
           if (_.isFunction(mod)) {
             imports[_getFileName(fileName, options.extension)] = mod;
@@ -509,9 +482,7 @@ function importDirectory(dirPath, options) {
     } else {
       return fileName;
     }
-  }).then(function(fileNames) {
-    return imports;
-  });
+  }).then(fileNames=>imports);
 }
 
 /**
