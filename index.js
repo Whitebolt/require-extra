@@ -504,7 +504,7 @@ requireAsync.importDirectory = importDirectory;
  * NodeJs module loading with an asynchronous flavour
  *
  * @module require-extra
- * @version 0.3.12
+ * @version 0.4.0
  * @type {function}
  */
 module.exports = requireAsync;
