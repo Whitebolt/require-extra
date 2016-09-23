@@ -77,16 +77,17 @@ function getCallingFileName() {
  * Calculate the calling directory path by examining the stack-trace.
  *
  * @private
- * @returns {string}      Directory path
+ * @param {string} resolveTo    The directory to resolve to.
+ * @returns {string}            Directory path
  */
-function getCallingDir(dir) {
+function getCallingDir(resolveTo) {
   callsite().every(function(trace) {
     var traceFile = trace.getFileName();
     if((traceFile !== __filename) && (!trace.isNative())){
-      if(dir){
-        dir = path.resolve(path.dirname(traceFile), dir);
+      if(resolveTo){
+        resolveTo = path.resolve(path.dirname(traceFile), resolveTo);
       }else{
-        dir = path.resolve(path.dirname(traceFile));
+        resolveTo = path.resolve(path.dirname(traceFile));
       }
 
       return false;
@@ -95,7 +96,7 @@ function getCallingDir(dir) {
     return true;
   });
 
-  return dir;
+  return resolveTo;
 }
 
 /**
@@ -156,10 +157,17 @@ function makeArray(ary) {
  *                                              if module load fails.
  * @returns {bluebird}
  */
-function getModule(modulePath, defaultReturnValue) {
+function getModule(useSync, modulePath, defaultReturnValue) {
+  if (!_.isBoolean(useSync)) {
+    defaultReturnValue = modulePath;
+    modulePath = useSync;
+    useSync = false;
+  }
+
+  var _require = (useSync ? _requireSync : requireAsync);
   if (modulePath) {
     modulePath = makeArray(modulePath);
-    return requireAsync(modulePath.shift()).catch(function(error) {
+    return _require(modulePath.shift()).catch(function(error) {
       if(modulePath.length) return getModule(modulePath, defaultReturnValue);
       return Promise.resolve([defaultReturnValue] || false);
     });
@@ -214,20 +222,57 @@ function loadModule(modulePath) {
 }
 
 /**
+ * This is a sychronous version of loadModule.  The module is still resolved
+ * using async methods but the actual loading is done using the native require
+ * from node.
+ *
+ * Load and evaluate a module returning undefined to promise resolve
+ * on failure.
+ *
+ * @private
+ * @param {string} modulePath   The path of the evaluated module.
+ * @returns {*}
+ */
+function loadModuleSync(modulePath) {
+  return new Promise((resolve, reject)=>{
+    process.nextTick(function(){
+      try {
+        var mod = require(modulePath);
+        resolve(mod);
+      } catch (err) {
+        reject(err);
+      }
+    });
+  });
+}
+
+/**
  * Load a module
  *
  * @private
  * @param {Object} [userResolver=resolver]      User-created resolver function.
  * @param {string} moduleName                   Module name or path, same
  *                                              format as for require().
+ * @param {boolean} [useSyncResolve=false]      Whether to use the native node
+ *                                              require function (sychronous)
+ *                                              or the require function from
+ *                                              this module, which is async.
  * @returns {bluebird}
  */
-function loader(userResolver, moduleName) {
-  moduleName = moduleName || userResolver;
-  userResolver = userResolver || resolver;
+function loader(userResolver, moduleName, useSyncResolve) {
+  if (arguments.length === 1) {
+    userResolver = resolver;
+    useSyncResolve = false;
+  } else if ((arguments.length === 2) && (_.isString(userResolver))) {
+    useSyncResolve = moduleName;
+    moduleName = userResolver;
+    userResolver = resolver;
+  } else if (arguments.length === 2) {
+    useSyncResolve = false;
+  }
 
   return resolveModulePath(userResolver, moduleName).then(function(modulePath) {
-    return loadModule(modulePath);
+    return (useSyncResolve?loadModuleSync:loadModule)(modulePath);
   }, function(error) {
     return Promise.reject(error);
   });
@@ -247,6 +292,44 @@ function loader(userResolver, moduleName) {
  * @param {function} [callback]                 Node-style callback to use
  *                                              instead of (or as well as)
  *                                              returned promise.
+ * @param {boolean} [useSyncResolve=false]      Whether to use the native node
+ *                                              require function (sychronous)
+ *                                              or the require function from
+ *                                              this module, which is async.
+ * @returns {bluebird}                          Promise, resolved with the
+ *                                              module(s) or undefined.
+ */
+function _requireX(userResolver, moduleName, callback, useSyncResolve) {
+  var async;
+  if (_.isArray(moduleName)){
+    async = Promise.all(moduleName.map(function(moduleName) {
+      return loader(userResolver, moduleName, useSyncResolve);
+    }));
+  } else {
+    async = loader(userResolver, moduleName, useSyncResolve);
+  }
+
+  if (callback) {
+    async.nodeify(callback, {spread: true});
+  }
+
+  return async;
+}
+
+/**
+ * Load a module asynchronously, this is an async version of require().  Will
+ * load a collection of modules if an array is supplied.  Will reject if module
+ * is not found or on error.
+ *
+ * @private
+ * @param {Object} [userResolver=resolver]      User-created resolver function
+ *                                              or an options object.
+ * @param {string|Array} moduleName             Module name or path (or
+ *                                              array of either), same format
+ *                                              as for require().
+ * @param {function} [callback]                 Node-style callback to use
+ *                                              instead of (or as well as)
+ *                                              returned promise.
  * @returns {bluebird}                          Promise, resolved with the
  *                                              module(s) or undefined.
  */
@@ -257,20 +340,37 @@ function requireAsync(userResolver, moduleName, callback) {
     userResolver = resolver;
   }
 
-  var async;
-  if (_.isArray(moduleName)){
-    async = Promise.all(moduleName.map(function(moduleName) {
-      return loader(userResolver, moduleName);
-    }));
-  } else {
-    async = loader(userResolver, moduleName);
+  return _requireX(userResolver, moduleName, callback, false);
+}
+
+/**
+ * Load a module asynchronously, this is an async version of require().  Will
+ * load a collection of modules if an array is supplied.  Will reject if module
+ * is not found or on error.
+ *
+ * This version still uses the native require() from node but resolves the path
+ * using async methodology.
+ *
+ * @public
+ * @param {Object} [userResolver=resolver]      User-created resolver function
+ *                                              or an options object.
+ * @param {string|Array} moduleName             Module name or path (or
+ *                                              array of either), same format
+ *                                              as for require().
+ * @param {function} [callback]                 Node-style callback to use
+ *                                              instead of (or as well as)
+ *                                              returned promise.
+ * @returns {bluebird}                          Promise, resolved with the
+ *                                              module(s) or undefined.
+ */
+function _requireSync(userResolver, moduleName, callback) {
+  if(_.isString(userResolver) || _.isArray(userResolver)){
+    callback = moduleName;
+    moduleName = userResolver;
+    userResolver = resolver;
   }
 
-  if (callback) {
-    async.nodeify(callback, {spread: true});
-  }
-
-  return async;
+  return _requireX(userResolver, moduleName, callback, true);
 }
 
 /**
@@ -323,10 +423,21 @@ function getExtensionRegEx(ext) {
   return new RegExp(ext + '$');
 }
 
+/**
+ * Get the extension names for a given filename
+ *
+ * @private
+ * @param {string} fileName   The filename to get the extension of.
+ * @param {Object} [options]  Options containing the file extension (or not).
+ * @returns {Array}
+ */
 function getFileTests(fileName, options) {
+  options = options || {};
+
+  var extension =  makeArray(options.extension || defaultExt);
   return _.uniq(
     [path.basename(fileName)].concat(
-      makeArray(options.extension || defaultExt).map(function(ext) {
+      extension.map(function(ext) {
         return path.basename(fileName, ext);
       }
      )
@@ -336,9 +447,18 @@ function getFileTests(fileName, options) {
   });
 }
 
-function canImport(fileName, caller, options) {
-  if (fileName === caller) return false;
-  let _fileName = getFileTests(fileName, options);
+/**
+ * Can a filename be imported according to the rules the suppllied options.
+ *
+ * @private
+ * @param {string} fileName         Filename to test.
+ * @param {string} callingFileName  Calling filename (file doing the import).
+ * @param {Object} options          Import/Export options.
+ * @returns {boolean}
+ */
+function canImport(fileName, callingFileName, options) {
+  if (fileName === callingFileName) return false;
+  var _fileName = getFileTests(fileName, options);
   if (options.includes) return (_.intersection(options.includes, _fileName).length > 0);
   if (options.excludes) return (_.intersection(options.includes, _fileName).length === 0);
   return true;
@@ -367,9 +487,11 @@ function importDirectory(dirPath, options) {
   options = options || {};
   var imports = (options.imports ? options.imports : {});
   var caller = getCallingFileName();
+  var _require = (options.useSyncRequire ? _requireSync : requireAsync);
+
   return filesInDirectory(dirPath, options.extension).map(function(fileName)  {
     if (canImport(fileName, caller, options)) {
-      return requireAsync(fileName).then(function(mod) {
+      return _require(fileName).then(function(mod) {
         return Promise.resolve(mod);
       }).then(function(mod) {
         if (options.merge === true) {
