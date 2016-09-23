@@ -7,17 +7,17 @@
 
 'use strict';
 
-var Promise = require('bluebird');  // jshint ignore:line
-var fs = require('fs');
-var readdir = Promise.promisify(fs.readdir);
-var path = require('path');
-var _eval = require('./lib/eval');
-var _ = require('lodash');
-var resolver = new (require('async-resolve'))();
-var callsite = require('callsite');
+const Promise = require('bluebird');  // jshint ignore:line
+const fs = require('fs');
+const readdir = Promise.promisify(fs.readdir);
+const path = require('path');
+const _eval = require('./lib/eval');
+const _ = require('lodash');
+const resolver = new (require('async-resolve'))();
+const callsite = require('callsite');
 
-var readFile = Promise.promisify(fs.readFile);
-var defaultExt = resolver.getState().extensions;
+const readFile = Promise.promisify(fs.readFile);
+const defaultExt = resolver.getState().extensions;
 
 
 /**
@@ -34,7 +34,7 @@ function resolveModulePath(userResolver, moduleName) {
   moduleName = moduleName || userResolver;
   userResolver = userResolver || resolver;
 
-  var dir = _getRoot(userResolver);
+  let dir = _getRoot(userResolver);
   return new Promise(function(resolve, reject) {
     _getResolve(userResolver).resolve(
         moduleName,
@@ -58,10 +58,10 @@ function resolveModulePath(userResolver, moduleName) {
  * @returns {string}      Filename of calling file.
  */
 function _getCallingFileName() {
-  var fileName;
+  let fileName;
 
   callsite().every(function(trace) {
-    var traceFile = trace.getFileName();
+    let traceFile = trace.getFileName();
     if((traceFile !== __filename) && (!trace.isNative())){
       fileName = traceFile;
       return false;
@@ -82,7 +82,7 @@ function _getCallingFileName() {
  */
 function _getCallingDir(resolveTo) {
   callsite().every(function(trace) {
-    var traceFile = trace.getFileName();
+    let traceFile = trace.getFileName();
     if((traceFile !== __filename) && (!trace.isNative())){
       if(resolveTo){
         resolveTo = path.resolve(path.dirname(traceFile), resolveTo);
@@ -164,7 +164,7 @@ function getModule(useSync, modulePath, defaultReturnValue) {
     useSync = false;
   }
 
-  var _require = (useSync ? _requireSync : requireAsync);
+  let _require = (useSync ? _requireSync : requireAsync);
   if (modulePath) {
     modulePath = _makeArray(modulePath);
     return _require(modulePath.shift()).catch(function(error) {
@@ -237,7 +237,7 @@ function _loadModuleSync(modulePath) {
   return new Promise((resolve, reject)=>{
     process.nextTick(function(){
       try {
-        var mod = require(modulePath);
+        let mod = require(modulePath);
         resolve(mod);
       } catch (err) {
         reject(err);
@@ -300,7 +300,7 @@ function _loader(userResolver, moduleName, useSyncResolve) {
  *                                              module(s) or undefined.
  */
 function _requireX(userResolver, moduleName, callback, useSyncResolve) {
-  var async;
+  let async;
   if (_.isArray(moduleName)){
     async = Promise.all(moduleName.map(function(moduleName) {
       return _loader(userResolver, moduleName, useSyncResolve);
@@ -383,7 +383,7 @@ function _requireSync(userResolver, moduleName, callback) {
  */
 function _filesInDirectory(dirPath, ext) {
   dirPath = path.resolve(path.dirname(_getCallingFileName()), dirPath);
-  var xExt = _getExtensionRegEx(ext);
+  let xExt = _getExtensionRegEx(ext);
 
   return readdir(dirPath).then(function(file) {
     return file;
@@ -434,7 +434,7 @@ function _getExtensionRegEx(ext) {
 function _getFileTests(fileName, options) {
   options = options || {};
 
-  var extension =  _makeArray(options.extension || defaultExt);
+  let extension =  _makeArray(options.extension || defaultExt);
   return _.uniq(
     [path.basename(fileName)].concat(
       extension.map(function(ext) {
@@ -458,7 +458,7 @@ function _getFileTests(fileName, options) {
  */
 function _canImport(fileName, callingFileName, options) {
   if (fileName === callingFileName) return false;
-  var _fileName = _getFileTests(fileName, options);
+  let _fileName = _getFileTests(fileName, options);
   if (options.includes) return (_.intersection(options.includes, _fileName).length > 0);
   if (options.excludes) return (_.intersection(options.includes, _fileName).length === 0);
   return true;
@@ -485,9 +485,9 @@ function _canImport(fileName, callingFileName, options) {
  */
 function importDirectory(dirPath, options) {
   options = options || {};
-  var imports = (options.imports ? options.imports : {});
-  var caller = _getCallingFileName();
-  var _require = (options.useSyncRequire ? _requireSync : requireAsync);
+  let imports = (options.imports ? options.imports : {});
+  let caller = _getCallingFileName();
+  let _require = (options.useSyncRequire ? _requireSync : requireAsync);
 
   return _filesInDirectory(dirPath, options.extension).map(function(fileName)  {
     if (_canImport(fileName, caller, options)) {
