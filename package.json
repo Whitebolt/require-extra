@@ -20,7 +20,15 @@
     "async-resolve": "^0.3.5",
     "bluebird": "^3.5.1",
     "callsite": "^1.0.0",
-    "lodash": "^4.17.4",
+    "lodash-provider": "^1.0.1",
+    "lodash.assign": "^4.2.0",
+    "lodash.castarray": "^4.4.0",
+    "lodash.intersection": "^4.4.0",
+    "lodash.isarray": "^4.0.0",
+    "lodash.isboolean": "^3.0.3",
+    "lodash.isfunction": "^3.0.8",
+    "lodash.isstring": "^4.0.1",
+    "lodash.uniq": "^4.5.0",
     "require-like": "^0.1.2"
   },
   "description": "NodeJs module loading with an asynchronous flavour",
@@ -57,5 +65,5 @@
     "test": "./gulpfile.js test"
   },
   "engines": ">=6.0.0",
-  "version": "0.5.0"
+  "version": "0.6.0"
 }

@@ -8,15 +8,15 @@
 'use strict';
 
 const Promise = require('bluebird');  // jshint ignore:line
-const fs = require('fs');
-const readdir = Promise.promisify(fs.readdir);
 const path = require('path');
 const _eval = require('./lib/eval');
-const _ = require('lodash');
+const {
+  isString, isArray, isBoolean, isFunction, assign, intersection, uniq, readDir,
+  readFile, castArray
+} = require('./lib/util');
 const resolver = new (require('async-resolve'))();
 const callsite = require('callsite');
 
-const readFile = Promise.promisify(fs.readFile);
 const defaultExt = resolver.getState().extensions;
 
 
@@ -116,18 +116,6 @@ function _getResolve(obj) {
 }
 
 /**
- * Return given value as array.  If already an array, just return as-is.
- * Undefined will return an empty array.
- *
- * @private
- * @param {Array|*} [ary=[]]     Value to return as an array
- * @returns {Array}
- */
-function _makeArray(ary=[]) {
-  return (_.isArray(ary)?ary:[ary]);
-}
-
-/**
  * Load a module or return a default value.  Can take an array to try.  Will
  * load module asynchronously.
  *
@@ -138,7 +126,7 @@ function _makeArray(ary=[]) {
  * @returns {bluebird}
  */
 function getModule(useSync, modulePath, defaultReturnValue) {
-  if (!_.isBoolean(useSync)) {
+  if (!isBoolean(useSync)) {
     defaultReturnValue = modulePath;
     modulePath = useSync;
     useSync = false;
@@ -146,7 +134,7 @@ function getModule(useSync, modulePath, defaultReturnValue) {
 
   let _require = (useSync ? _requireSync : requireAsync);
   if (modulePath) {
-    modulePath = _makeArray(modulePath);
+    modulePath = castArray(modulePath);
     return _require(modulePath.shift()).catch(error=>{
       if(modulePath.length) return getModule(modulePath, defaultReturnValue);
       return Promise.resolve([defaultReturnValue] || false);
@@ -243,7 +231,7 @@ function _loader(userResolver, moduleName, useSyncResolve) {
   if (arguments.length === 1) {
     userResolver = resolver;
     useSyncResolve = false;
-  } else if ((arguments.length === 2) && (_.isString(userResolver))) {
+  } else if ((arguments.length === 2) && (isString(userResolver))) {
     useSyncResolve = moduleName;
     moduleName = userResolver;
     userResolver = resolver;
@@ -281,7 +269,7 @@ function _loader(userResolver, moduleName, useSyncResolve) {
 function _requireX(userResolver, moduleName, callback, useSyncResolve=false) {
   let async;
 
-  if (_.isArray(moduleName)){
+  if (isArray(moduleName)){
     async = Promise.all(moduleName.map(
       moduleName=>_loader(userResolver, moduleName, useSyncResolve)
     ));
@@ -312,7 +300,7 @@ function _requireX(userResolver, moduleName, callback, useSyncResolve=false) {
  *                                              module(s) or undefined.
  */
 function requireAsync(userResolver, moduleName, callback) {
-  if(_.isString(userResolver) || _.isArray(userResolver)){
+  if(isString(userResolver) || isArray(userResolver)){
     callback = moduleName;
     moduleName = userResolver;
     userResolver = resolver;
@@ -342,7 +330,7 @@ function requireAsync(userResolver, moduleName, callback) {
  *                                              module(s) or undefined.
  */
 function _requireSync(userResolver, moduleName, callback) {
-  if(_.isString(userResolver) || _.isArray(userResolver)){
+  if(isString(userResolver) || isArray(userResolver)){
     callback = moduleName;
     moduleName = userResolver;
     userResolver = resolver;
@@ -363,7 +351,7 @@ function _filesInDirectory(dirPath, ext=defaultExt) {
   dirPath = path.resolve(path.dirname(_getCallingFileName()), dirPath);
   let xExt = _getExtensionRegEx(ext);
 
-  return readdir(dirPath).then(
+  return readDir(dirPath).then(
     file=>file, err=>[]
   ).filter(
     fileName=>xExt.test(fileName)
@@ -394,7 +382,7 @@ function _getFileName(filePath, ext=defaultExt) {
  * @returns {RegExp}                          File path matcher.
  */
 function _getExtensionRegEx(ext=defaultExt) {
-  let _ext = '(?:' + _makeArray(ext).join('|') + ')';
+  let _ext = '(?:' + castArray(ext).join('|') + ')';
   return new RegExp(_ext + '$');
 }
 
@@ -407,8 +395,8 @@ function _getExtensionRegEx(ext=defaultExt) {
  * @returns {Array}
  */
 function _getFileTests(fileName, options={}) {
-  let extension =  _makeArray(options.extension || defaultExt);
-  return _.uniq(
+  let extension =  castArray(options.extension || defaultExt);
+  return uniq(
     [path.basename(fileName)].concat(
       extension.map(ext=>path.basename(fileName, ext)
      )
@@ -428,8 +416,8 @@ function _getFileTests(fileName, options={}) {
 function _canImport(fileName, callingFileName, options) {
   if (fileName === callingFileName) return false;
   let _fileName = _getFileTests(fileName, options);
-  if (options.includes) return (_.intersection(options.includes, _fileName).length > 0);
-  if (options.excludes) return (_.intersection(options.includes, _fileName).length === 0);
+  if (options.includes) return (intersection(options.includes, _fileName).length > 0);
+  if (options.excludes) return (intersection(options.includes, _fileName).length === 0);
   return true;
 }
 
@@ -464,10 +452,10 @@ function importDirectory(dirPath, options) {
         mod=>Promise.resolve(mod)
       ).then(mod=>{
         if (options.merge === true) {
-          if (_.isFunction(mod)) {
+          if (isFunction(mod)) {
             imports[_getFileName(fileName, options.extension)] = mod;
           } else {
-            _.assign(imports, mod);
+            assign(imports, mod);
           }
         } else {
           imports[_getFileName(fileName, options.extension)] = mod;
