@@ -4,12 +4,12 @@
 
 'use strict';
 
-var packageInfo = require('../package.json');
-var jsDoc = require('./index.json');
-var requireX = require('../index.js');
-var expect = require('chai').expect;
-var path = require('path');
-var mockFs = require('mock-fs');
+const packageInfo = require('../package.json');
+const jsDoc = require('./index.json');
+const requireX = require('../index.js');
+const expect = require('chai').expect;
+const path = require('path');
+const mockFs = require('mock-fs');
 
 
 /**
@@ -18,17 +18,17 @@ var mockFs = require('mock-fs');
  * @private
  */
 function setupMockFileSystem(){
-  var mockFsSetup = {};
+  const mockFsSetup = {};
 
-  var testModulesDir = __dirname + '/../forTests';
-  var nodeModulesDir = __dirname + '/node_modules';
-  var nodeModulesParentDir = __dirname + '/../node_modules';
+  const testModulesDir = __dirname + '/../forTests';
+  const nodeModulesDir = __dirname + '/node_modules';
+  const nodeModulesParentDir = __dirname + '/../node_modules';
 
   mockFsSetup[testModulesDir] = {
     'testModule1.js': 'module.exports = {\'testParam\': 1};',
     'testModule2.js': 'module.exports = {\'testParam\': 2};',
     'testModule1-2.js': 'module.exports = {\'testParam\': require(\'./testModule2.js\')};',
-    'testModuleWithError.js': 'var error = b/100;module.exports = {\'testParam\': 1};'
+    'testModuleWithError.js': 'const error = b/100;module.exports = {\'testParam\': 1};'
   };
 
   mockFsSetup[nodeModulesDir] = {
@@ -77,80 +77,80 @@ function describeItem(items, itemName) {
 }
 
 
-describe(describeItem(packageInfo), function() {
+describe(describeItem(packageInfo), ()=>{
   setupMockFileSystem();
 
-  it('Should export a function with 3 method: resolve, getModule and getResolver', function() {
+  it('Should export a function with 3 method: resolve, getModule and getResolver', ()=>{
     expect(requireX).to.be.a('function');
-    ['resolve', 'getModule', 'getResolver'].forEach(function(method) {
+    ['resolve', 'getModule', 'getResolver'].forEach(method=>{
       expect(requireX[method]).to.be.a('function');
     });
   });
 
-  describe(describeItem(jsDoc, 'requireAsync'), function() {
-    describe('Should load module asynchronously', function() {
-      it('Should return the module in node-style callback', function(done) {
-        requireX('../forTests/testModule1.js', function(error, testModule1) {
+  describe(describeItem(jsDoc, 'requireAsync'), ()=>{
+    describe('Should load module asynchronously', ()=>{
+      it('Should return the module in node-style callback', done=>{
+        requireX('../forTests/testModule1.js', (error, testModule1)=>{
           expect(testModule1.testParam).to.equal(1);
           expect(error).to.equal(null);
           done();
         });
       });
 
-      it('Should resolve the module to returned promise', function(done) {
-        requireX('../forTests/testModule1.js').then(function(testModule1) {
+      it('Should resolve the module to returned promise', done=>{
+        requireX('../forTests/testModule1.js').then(testModule1=>{
           expect(testModule1.testParam).to.equal(1);
           done();
         });
       });
 
-      it('Should load dependant modules', function(done) {
-        requireX('../forTests/testModule1-2.js').then(function(testModule1) {
+      it('Should load dependant modules', done=>{
+        requireX('../forTests/testModule1-2.js').then(testModule1=>{
           expect(testModule1.testParam.testParam).to.equal(2);
           done();
         });
       });
 
-      it('Should return an error to node-style callback when module not found', function(done) {
-        requireX('../forTests/testModule-1.js', function(error, testModule1) {
+      it('Should return an error to node-style callback when module not found', done=>{
+        requireX('../forTests/testModule-1.js', (error, testModule1)=>{
           expect(error).to.not.equal(null);
           expect(testModule1).to.equal(undefined);
           done();
         });
       });
 
-      it('Should reject the returned promise when module not found', function(done) {
-        requireX('../forTests/testModule-1.js').then(null, function(error) {
+      it('Should reject the returned promise when module not found', done=>{
+        requireX('../forTests/testModule-1.js').then(null, error=>{
           expect(error).to.not.equal(null);
           done();
         });
       });
     });
 
-    it('Should reject the promise with error when error occurs in module', function(done) {
-      requireX('../forTests/testModuleWithError.js').then(null, function(error) {
+    it('Should reject the promise with error when error occurs in module', done=>{
+      requireX('../forTests/testModuleWithError.js').then(null, error=>{
         expect(error).to.not.equal(null);
         done();
       });
     });
 
-    describe('Should load an array of modules asynchronously', function() {
-      it('Should resolve the modules to returned promise', function(done) {
+    describe('Should load an array of modules asynchronously', ()=>{
+      it('Should resolve the modules to returned promise', done=>{
         requireX([
           '../forTests/testModule1.js',
           '../forTests/testModule2.js'
-        ]).spread(function(testModule1, testModule2) {
+        ]).spread((testModule1, testModule2)=>{
           expect(testModule1.testParam).to.equal(1);
           expect(testModule2.testParam).to.equal(2);
           done();
         });
       });
 
-      it('Should return modules in callback', function(done) {
+      it('Should return modules in callback', done=>{
         requireX([
           '../forTests/testModule1.js',
           '../forTests/testModule2.js'
-        ], function(error, testModule1, testModule2) {
+        ], (error, testModule1, testModule2)=>{
           expect(error).to.equal(null);
           expect(testModule1.testParam).to.equal(1);
           expect(testModule2.testParam).to.equal(2);
@@ -159,50 +159,50 @@ describe(describeItem(packageInfo), function() {
       });
     });
 
-    describe('Should be able to set the base directory manually', function() {
-      it('Should be able to set directory to relative path', function(done) {
+    describe('Should be able to set the base directory manually', ()=>{
+      it('Should be able to set directory to relative path', done=>{
         requireX({
           dir: '../forTests'
-        }, './testModule1.js').then(function(testModule1) {
+        }, './testModule1.js').then(testModule1=>{
           expect(testModule1.testParam).to.equal(1);
           done();
         });
       });
 
-      it('Should be able to set directory to absolute path', function(done) {
+      it('Should be able to set directory to absolute path', done=>{
         requireX({
           dir: path.resolve(__dirname + '/../')
-        }, './forTests/testModule1.js').then(function(testModule1) {
+        }, './forTests/testModule1.js').then(testModule1=>{
           expect(testModule1.testParam).to.equal(1);
           done();
         });
       });
     });
 
-    describe('Should load modules from node-modules', function() {
-      it('Should load a node module', function(done){
-        requireX('express').then(function(express) {
+    describe('Should load modules from node-modules', ()=>{
+      it('Should load a node module', done=>{
+        requireX('express').then(express=>{
           expect(express.testParam).to.equal('EXPRESS');
           done();
         });
       });
 
-      it('Should load a node module when it package.json defines a different main file', function(done){
-        requireX('socket.io').then(function(socket) {
+      it('Should load a node module when it package.json defines a different main file', done=>{
+        requireX('socket.io').then(socket=>{
           expect(socket.testParam).to.equal('SOCKET.IO');
           done();
         });
       });
 
-      it('Should trace-up the node_module tree to find module', function(done){
-        requireX('gulp').then(function(gulp) {
+      it('Should trace-up the node_module tree to find module', done=>{
+        requireX('gulp').then(gulp=>{
           expect(gulp.testParam).to.equal('GULP');
           done();
         });
       });
 
-      it('Should load the most local module in the node_modules tree', function(done){
-        requireX('grunt').then(function(grunt) {
+      it('Should load the most local module in the node_modules tree', done=>{
+        requireX('grunt').then(grunt=>{
           expect(grunt.testParam).to.equal('GRUNT-LOCAL');
           done();
         });
@@ -210,26 +210,26 @@ describe(describeItem(packageInfo), function() {
     });
   });
 
-  describe(describeItem(jsDoc, 'resolveModulePath'), function() {
-    it('', function() {
+  describe(describeItem(jsDoc, 'resolveModulePath'), ()=>{
+    it('', ()=>{
       // STUB
     });
   });
 
-  describe(describeItem(jsDoc, 'getModule'), function() {
-    it('', function() {
+  describe(describeItem(jsDoc, 'getModule'), ()=>{
+    it('', ()=>{
       // STUB
     });
   });
 
-  describe(describeItem(jsDoc, 'getResolver'), function() {
-    it('', function() {
+  describe(describeItem(jsDoc, 'getResolver'), ()=>{
+    it('', ()=>{
       // STUB
     });
   });
 
-  describe(describeItem(jsDoc, 'importDirectory'), function() {
-    it('', function() {
+  describe(describeItem(jsDoc, 'importDirectory'), ()=>{
+    it('', ()=>{
       // STUB
     });
   });
