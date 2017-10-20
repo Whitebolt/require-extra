@@ -28,8 +28,7 @@
     "chai": "^4.1.2",
     "gulp-mocha": "^4.3.1",
     "jsdoc-api": "^4.0.0",
-    "mocha": "^4.0.1",
-    "mock-fs": "^4.4.2"
+    "mocha": "^4.0.1"
   },
   "directories": {},
   "homepage": "https://github.com/ssimpo/require-extra#readme",
@@ -58,5 +57,5 @@
     "test": "./gulpfile.js test"
   },
   "engines": ">=6.0.0",
-  "version": "0.4.1"
+  "version": "0.5.0"
 }

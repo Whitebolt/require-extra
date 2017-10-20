@@ -75,7 +75,7 @@ function _getCallingFileName() {
 function _getCallingDir(resolveTo) {
   callsite().every(trace=>{
     let traceFile = trace.getFileName();
-    if((traceFile !== __filename) && (!trace.isNative())){
+    if(traceFile && (traceFile !== __filename) && (!trace.isNative())){
       if(resolveTo){
         resolveTo = path.resolve(path.dirname(traceFile), resolveTo);
       }else{
@@ -280,6 +280,7 @@ function _loader(userResolver, moduleName, useSyncResolve) {
  */
 function _requireX(userResolver, moduleName, callback, useSyncResolve=false) {
   let async;
+
   if (_.isArray(moduleName)){
     async = Promise.all(moduleName.map(
       moduleName=>_loader(userResolver, moduleName, useSyncResolve)
@@ -288,9 +289,7 @@ function _requireX(userResolver, moduleName, callback, useSyncResolve=false) {
     async = _loader(userResolver, moduleName, useSyncResolve);
   }
 
-  if (callback) {
-    async.nodeify(callback, {spread: true});
-  }
+  if (callback) async.nodeify(callback, {spread: true});
 
   return async;
 }
