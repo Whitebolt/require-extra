@@ -17,25 +17,21 @@
     }
   ],
   "dependencies": {
-    "async-resolve": "~0.3.3",
-    "bluebird": "^3.4.0",
+    "async-resolve": "^0.3.5",
+    "bluebird": "^3.5.1",
     "callsite": "^1.0.0",
-    "require-like": ">= 0.1.1",
-    "lodash": "^4.13.1"
+    "lodash": "^4.17.4",
+    "require-like": "^0.1.2"
   },
   "description": "NodeJs module loading with an asynchronous flavour",
   "devDependencies": {
-    "chai": "^3.3.0",
-    "jsdoc-parse": "^1.1.0",
-    "mocha": "^2.3.3",
-    "mock-fs": "^3.2.0"
+    "chai": "^4.1.2",
+    "gulp-mocha": "^4.3.1",
+    "jsdoc-api": "^4.0.0",
+    "mocha": "^4.0.1",
+    "mock-fs": "^4.4.2"
   },
   "directories": {},
-  "dist": {
-    "shasum": "d56a52796403e162dcc791d55dda3d8d2ab07f16",
-    "tarball": "https://registry.npmjs.org/require-extra/-/require-extra-0.2.2.tgz"
-  },
-  "gitHead": "43ec6c588cc33f40f17f8f5c5077e6ce9c4667f7",
   "homepage": "https://github.com/ssimpo/require-extra#readme",
   "keywords": [
     "require",
@@ -59,7 +55,7 @@
     "url": "git+https://github.com/ssimpo/require-extra.git"
   },
   "scripts": {
-    "test": "./bin/test"
+    "test": "./gulpfile.js test"
   },
   "engines": ">=6.0.0",
   "version": "0.4.0"

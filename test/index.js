@@ -68,11 +68,12 @@ function setupMockFileSystem(){
  * @returns {string}
  */
 function describeItem(items, itemName) {
-  if(itemName){
-    return items[itemName].name + '(): ' + items[itemName].description;
+  try {
+    if (itemName) return items[itemName].name + '(): ' + items[itemName].description;
+    return items.name + ': ' + items.description;
+  } catch(err) {
+    return '';
   }
-
-  return items.name + ': ' + items.description;
 }
 
 
