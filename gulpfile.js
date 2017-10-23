@@ -3,11 +3,13 @@
 
 // @note We are avoiding ES6 here.
 
-var xIsJsFile = /\.js$/i;
+const xIsJsFile = /\.js$/i;
 
-var fs = require('fs');
-var gulp = require('gulp');
-var tasks = createTasks('./tasks');
+require('./lib/importSettings')('gulp', ['name', 'main'], {main:'./index.js'});
+
+const fs = require('fs');
+const gulp = require('gulp');
+const tasks = createTasks('./tasks');
 
 
 /**

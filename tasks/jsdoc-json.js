@@ -1,7 +1,5 @@
 'use strict';
 
-const nodeVersion = parseFloat(process.versions.node.split('.').slice(0, 2).join('.'));
-
 const fs = require('fs');
 
 /**
@@ -44,12 +42,11 @@ function write(filepath, contents) {
 }
 
 function fn(gulp, done) {
-  if (nodeVersion >= 4.2) {
+  if (gulpSettings.nodeVersion >= 4.2) {
     const jsdoc = require('jsdoc-api');
-
-    parseJsDoc(process.cwd() + '/index.js', jsdoc).then(data=>{
-      return write(process.cwd() + '/test/index.json', JSON.stringify(data));
-    }).then(done);
+    parseJsDoc(__cwd + gulpSettings.main, jsdoc).then(data=>
+      write(__cwd + gulpSettings.tests + '/forTests/index.json', JSON.stringify(data))
+    ).then(done);
   } else {
     console.log('Jsdoc-api module does not work in node < 4.2.  This means no nice print-outs in test suits.');
     done();

@@ -61,6 +61,18 @@
     "type": "git",
     "url": "git+https://github.com/ssimpo/require-extra.git"
   },
+  "gulp": {
+    "tests": "./test",
+    "mocha": {
+      "gobals": [
+        "__cwd",
+        "gulpSettings"
+      ]
+    }
+  },
+  "config": {
+    "port": 80
+  },
   "scripts": {
     "test": "./gulpfile.js test"
   },

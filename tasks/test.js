@@ -3,8 +3,8 @@
 const mocha = require('gulp-mocha');
 
 function fn(gulp, done) {
-  return gulp.src(process.cwd() + '/test/index.js', {read: false})
-    .pipe(mocha())
+  return gulp.src(__cwd + gulpSettings.tests + '/index.js', {read: false})
+    .pipe(mocha(gulpSettings.mocha || {}))
     .on('end', done);
 }
 

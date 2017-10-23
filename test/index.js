@@ -2,8 +2,10 @@
 /* global chai */
 'use strict';
 
-const packageInfo = require('../package.json');
-const jsDoc = require('./index.json');
+require(process.cwd() + '/lib/importSettings')('gulp', ['name', 'main'], {main:'./index.js'});
+
+const packageInfo = require(__cwd + 'package.json');
+const jsDoc = require(__cwd + gulpSettings.tests + '/forTests/index.json');
 const expect = require('chai').expect;
 const path = require('path');
 const requireX = require('../index.js');
