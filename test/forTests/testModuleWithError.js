@@ -1,6 +1,7 @@
 'use strict';
 
-const error = b/100;
+throw new SyntaxError('');
+
 module.exports = {
   testParam: 1
 };

@@ -13,7 +13,7 @@ const _eval = require('./lib/eval');
 const {
   isString, isArray, isBoolean, isFunction, assign, intersection, uniq, readDir,
   readFile, castArray
-} = require('./lib/util');
+  } = require('./lib/util');
 const resolver = new (require('async-resolve'))();
 const callsite = require('callsite');
 
@@ -116,35 +116,6 @@ function _getResolve(obj) {
 }
 
 /**
- * Load a module or return a default value.  Can take an array to try.  Will
- * load module asynchronously.
- *
- * @public
- * @param {string|Array} modulePath             Module path or array of paths.
- * @param {*} [defaultReturnValue=false]        The default value to return
- *                                              if module load fails.
- * @returns {bluebird}
- */
-function getModule(useSync, modulePath, defaultReturnValue) {
-  if (!isBoolean(useSync)) {
-    defaultReturnValue = modulePath;
-    modulePath = useSync;
-    useSync = false;
-  }
-
-  let _require = (useSync ? _requireSync : requireAsync);
-  if (modulePath) {
-    modulePath = castArray(modulePath);
-    return _require(modulePath.shift()).catch(error=>{
-      if(modulePath.length) return getModule(modulePath, defaultReturnValue);
-      return Promise.resolve([defaultReturnValue] || false);
-    });
-  }
-
-  return Promise.resolve(defaultReturnValue || false);
-}
-
-/**
  * Read text from a file and handle any errors.
  *
  * @private
@@ -164,15 +135,15 @@ function _loadModuleText(fileName) {
  * @returns {*}
  */
 function _evalModuleText(modulePath, moduleText) {
-	if (/\.json$/.test(modulePath)) {
-		return JSON.parse(moduleText);
-	} else {
-		return (
-			(moduleText !== undefined)?
-				_eval(moduleText, modulePath, {}, true):
-				undefined
-		);
-	}
+  if (/\.json$/.test(modulePath)) {
+    return JSON.parse(moduleText);
+  } else {
+    return (
+      (moduleText !== undefined)?
+        _eval(moduleText, modulePath, {}, true):
+        undefined
+    );
+  }
 }
 
 /**
@@ -183,10 +154,8 @@ function _evalModuleText(modulePath, moduleText) {
  * @param {string} modulePath   The path of the evaluated module.
  * @returns {*}
  */
-function _loadModule(modulePath) {
-  return _loadModuleText(modulePath).then(
-    moduleText=>_evalModuleText(modulePath, moduleText)
-  );
+async function _loadModule(modulePath) {
+  return _evalModuleText(modulePath, await _loadModuleText(modulePath));
 }
 
 /**
@@ -202,47 +171,22 @@ function _loadModule(modulePath) {
  * @returns {*}
  */
 function _loadModuleSync(modulePath) {
-  return new Promise((resolve, reject)=>{
-    process.nextTick(()=>{
-      try {
-        let mod = require(modulePath);
-        resolve(mod);
-      } catch (err) {
-        reject(err);
-      }
-    });
-  });
+  return Promise.promisify(setImmediate)().then(()=>require(modulePath));
 }
 
 /**
  * Load a module
  *
  * @private
- * @param {Object} [userResolver=resolver]      User-created resolver function.
- * @param {string} moduleName                   Module name or path, same
- *                                              format as for require().
- * @param {boolean} [useSyncResolve=false]      Whether to use the native node
- *                                              require function (sychronous)
- *                                              or the require function from
- *                                              this module, which is async.
- * @returns {bluebird}
+ * @param {Object} userResolver         User-created resolver function.
+ * @param {string} moduleName           Module name or path, same format as for require().
+ * @param {boolean} useSyncResolve      Whether to use the native node require function (sychronous) or the require
+ *                                      function from this module, which is async.
+ * @returns {Promise.<*|undefined>}     The module or undefined.
  */
-function _loader(userResolver, moduleName, useSyncResolve) {
-  if (arguments.length === 1) {
-    userResolver = resolver;
-    useSyncResolve = false;
-  } else if ((arguments.length === 2) && (isString(userResolver))) {
-    useSyncResolve = moduleName;
-    moduleName = userResolver;
-    userResolver = resolver;
-  } else if (arguments.length === 2) {
-    useSyncResolve = false;
-  }
-
-  return resolveModulePath(userResolver, moduleName).then(
-    modulePath=>(useSyncResolve?_loadModuleSync:_loadModule)(modulePath),
-    error=>Promise.reject(error)
-  );
+async function _loader(userResolver, moduleName, useSyncResolve) {
+  const modulePath = await resolveModulePath(userResolver, moduleName);
+  return (useSyncResolve?_loadModuleSync:_loadModule)(modulePath);
 }
 
 /**
@@ -251,62 +195,22 @@ function _loader(userResolver, moduleName, useSyncResolve) {
  * is not found or on error.
  *
  * @private
- * @param {Object} [userResolver=resolver]      User-created resolver function
- *                                              or an options object.
- * @param {string|Array} moduleName             Module name or path (or
- *                                              array of either), same format
- *                                              as for require().
- * @param {function} [callback]                 Node-style callback to use
- *                                              instead of (or as well as)
- *                                              returned promise.
- * @param {boolean} [useSyncResolve=false]      Whether to use the native node
- *                                              require function (sychronous)
- *                                              or the require function from
- *                                              this module, which is async.
- * @returns {bluebird}                          Promise, resolved with the
- *                                              module(s) or undefined.
+ * @param {Object} userResolver                 User-created resolver function or an options object.
+ * @param {string|Array} moduleName             Module name or path (or array of either), same format as for require().
+ * @param {function} [callback]                 Node-style callback to use instead of (or as well as) returned promise.
+ * @param {boolean} [useSyncResolve=false]      Whether to use the native node require function (sychronous) or the
+ *                                              require function from this module, which is async.
+ * @returns {Promise.<*|undefined>}             Promise, resolved with the module(s) or undefined.
  */
 function _requireX(userResolver, moduleName, callback, useSyncResolve=false) {
-  let async;
+  const async = (isArray(moduleName) ?
+      Promise.all(moduleName.map(moduleName=>_loader(userResolver, moduleName, useSyncResolve))) :
+      _loader(userResolver, moduleName, useSyncResolve)
+  );
 
-  if (isArray(moduleName)){
-    async = Promise.all(moduleName.map(
-      moduleName=>_loader(userResolver, moduleName, useSyncResolve)
-    ));
-  } else {
-    async = _loader(userResolver, moduleName, useSyncResolve);
-  }
-
-  if (callback) async.nodeify(callback, {spread: true});
+  if (callback) Promise.resolve(async).nodeify(callback, {spread:true});
 
   return async;
-}
-
-/**
- * Load a module asynchronously, this is an async version of require().  Will
- * load a collection of modules if an array is supplied.  Will reject if module
- * is not found or on error.
- *
- * @public
- * @param {Object} [userResolver=resolver]      User-created resolver function
- *                                              or an options object.
- * @param {string|Array} moduleName             Module name or path (or
- *                                              array of either), same format
- *                                              as for require().
- * @param {function} [callback]                 Node-style callback to use
- *                                              instead of (or as well as)
- *                                              returned promise.
- * @returns {bluebird}                          Promise, resolved with the
- *                                              module(s) or undefined.
- */
-function requireAsync(userResolver, moduleName, callback) {
-  if(isString(userResolver) || isArray(userResolver)){
-    callback = moduleName;
-    moduleName = userResolver;
-    userResolver = resolver;
-  }
-
-  return _requireX(userResolver, moduleName, callback, false);
 }
 
 /**
@@ -399,7 +303,7 @@ function _getFileTests(fileName, options={}) {
   return uniq(
     [path.basename(fileName)].concat(
       extension.map(ext=>path.basename(fileName, ext)
-     )
+      )
     )
   ).filter(value=>value);
 }
@@ -470,6 +374,35 @@ function importDirectory(dirPath, options) {
 }
 
 /**
+ * Load a module or return a default value.  Can take an array to try.  Will
+ * load module asynchronously.
+ *
+ * @public
+ * @param {string|Array} modulePath             Module path or array of paths.
+ * @param {*} [defaultReturnValue=false]        The default value to return
+ *                                              if module load fails.
+ * @returns {bluebird}
+ */
+function getModule(useSync, modulePath, defaultReturnValue) {
+  if (!isBoolean(useSync)) {
+    defaultReturnValue = modulePath;
+    modulePath = useSync;
+    useSync = false;
+  }
+
+  let _require = (useSync ? _requireSync : requireAsync);
+  if (modulePath) {
+    modulePath = castArray(modulePath);
+    return _require(modulePath.shift()).catch(error=>{
+      if(modulePath.length) return getModule(modulePath, defaultReturnValue);
+      return Promise.resolve([defaultReturnValue] || false);
+    });
+  }
+
+  return Promise.resolve(defaultReturnValue || false);
+}
+
+/**
  * Generate a new resolver object following specific rules defined in the
  * options parameter. If no options are supplied, return a default resolver.
  *
@@ -482,10 +415,28 @@ function getResolver(options) {
   return new (require('async-resolve'))(options || {});
 }
 
+/**
+ * Load a module asynchronously, this is an async version of require().  Will load a collection of modules if an array
+ * is supplied.  Will reject if module is not found or on error.
+ *
+ * @public
+ * @param {Object} [userResolver=resolver]      User-created resolver function or an options object.
+ * @param {string|Array} moduleName             Module name or path (or array of either), same format as for require().
+ * @param {function} [callback]                 Node-style callback to use instead of (or as well as) returned promise.
+ * @returns {bluebird}                          Promise, resolved with the module(s) or undefined.
+ */
+function requireAsync(...params) {
+  const userResolver = ((isString(params[0]) || isArray(params[0])) ? resolver : params.shift());
+  const [moduleName, callback] = params;
+  return _requireX(userResolver, moduleName, callback, false);
+}
+
 requireAsync.resolve = resolveModulePath;
 requireAsync.getModule = getModule;
 requireAsync.getResolver = getResolver;
 requireAsync.importDirectory = importDirectory;
+
+
 
 /**
  * NodeJs module loading with an asynchronous flavour
