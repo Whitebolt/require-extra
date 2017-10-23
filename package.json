@@ -18,6 +18,7 @@
   ],
   "dependencies": {
     "async-resolve": "^0.3.5",
+    "babel-polyfill": "^6.26.0",
     "bluebird": "^3.5.1",
     "callsite": "^1.0.0",
     "lodash-provider": "^1.0.1",
@@ -29,14 +30,26 @@
     "lodash.isfunction": "^3.0.8",
     "lodash.isstring": "^4.0.1",
     "lodash.uniq": "^4.5.0",
-    "require-like": "^0.1.2"
+    "require-like": "^0.1.2",
+    "semver": "^5.4.1"
   },
   "description": "NodeJs module loading with an asynchronous flavour",
   "devDependencies": {
+    "babel-core": "^6.26.0",
+    "babel-plugin-syntax-async-functions": "^6.13.0",
+    "babel-plugin-syntax-async-generators": "^6.13.0",
+    "babel-plugin-transform-async-generator-functions": "^6.24.1",
+    "babel-plugin-transform-regenerator": "^6.26.0",
+    "babel-preset-env": "^1.6.0",
     "chai": "^4.1.2",
+    "gulp-babel": "^7.0.0",
+    "gulp-commonjs-browser-wrap": "^0.3.4",
+    "gulp-concat": "^2.6.1",
     "gulp-mocha": "^4.3.1",
     "jsdoc-api": "^4.0.0",
-    "mocha": "^4.0.1"
+    "lodash.clonedeep": "^4.5.0",
+    "mocha": "^4.0.1",
+    "vinyl-commonjs-dependencies": "^0.5.4"
   },
   "directories": {},
   "homepage": "https://github.com/ssimpo/require-extra#readme",
@@ -63,18 +76,50 @@
   },
   "gulp": {
     "tests": "./test",
+    "build": "./build",
+    "main": "./lib/index.js",
     "mocha": {
       "gobals": [
         "__cwd",
         "gulpSettings"
       ]
-    }
+    },
+    "nodeTargets": [
+      "9.0.0",
+      "8.7.0",
+      "8.6.0",
+      "8.2.1",
+      "7.10.1",
+      "7.5.0",
+      "6.11.4",
+      "6.4.0",
+      "5.12.0",
+      "4.8.4",
+      "0.12.18",
+      "0.10.48"
+    ]
   },
   "config": {
     "port": 80
   },
   "scripts": {
     "test": "./gulpfile.js test"
+  },
+  "babel": {
+    "presets": [
+      [
+        "env",
+        {
+          "targets": {
+            "node": "current"
+          }
+        }
+      ]
+    ],
+    "plugins": [
+      "syntax-async-functions",
+      "syntax-async-generators"
+    ]
   },
   "engines": ">=6.0.0",
   "version": "0.6.0"
