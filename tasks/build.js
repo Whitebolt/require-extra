@@ -57,4 +57,4 @@ function fn(gulp, done) {
   });
 }
 
-module.exports = {deps: [], fn};
+module.exports = {deps: ['jsdoc-json'], fn};

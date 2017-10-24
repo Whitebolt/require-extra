@@ -8,4 +8,4 @@ function fn(gulp, done) {
     .on('end', done);
 }
 
-module.exports = {deps: ['jsdoc-json'], fn};
+module.exports = {deps: [], fn};
