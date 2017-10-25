@@ -4,7 +4,6 @@
 // @note We are avoiding ES6 here.
 
 const xIsJsFile = /\.js$/i;
-
 require('./lib/importSettings')('gulp', ['babel']);
 
 const fs = require('fs');
@@ -28,7 +27,9 @@ function tree(root) {
 			if (stats.isDirectory()) {
 				structure[_files[i]] = tree(root + '/' + _files[i]);
 			} else if (stats.isFile() && xIsJsFile.test(_files[i])) {
-				structure[_files[i]] = require(root + '/' + _files[i])
+				try {
+					structure[_files[i]] = require(root + '/' + _files[i]);
+				} catch(err) {}
 			}
 		}
 	}

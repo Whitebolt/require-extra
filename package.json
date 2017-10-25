@@ -16,12 +16,18 @@
       "name": "Kristjan Allikas"
     }
   ],
+  "files": [
+    "build/",
+    "lib/versionLoader.js",
+    "index.js",
+    "yarn.lock"
+  ],
   "dependencies": {
     "async-resolve": "^0.3.5",
     "babel-polyfill": "^6.26.0",
     "bluebird": "^3.5.1",
     "callsite": "^1.0.0",
-    "lodash-provider": "^1.0.1",
+    "lodash-provider": "^1.4.0",
     "lodash.assign": "^4.2.0",
     "lodash.castarray": "^4.4.0",
     "lodash.intersection": "^4.4.0",
@@ -40,16 +46,16 @@
     "babel-plugin-syntax-async-generators": "^6.13.0",
     "babel-plugin-transform-async-generator-functions": "^6.24.1",
     "babel-plugin-transform-regenerator": "^6.26.0",
-    "babel-preset-env": "^1.6.0",
+    "babel-preset-env": "^1.6.1",
     "chai": "^4.1.2",
     "gulp-babel": "^7.0.0",
-    "gulp-commonjs-browser-wrap": "^0.3.4",
+    "gulp-commonjs-browser-wrap": "^0.6.2",
     "gulp-concat": "^2.6.1",
     "gulp-mocha": "^4.3.1",
     "jsdoc-api": "^4.0.0",
     "lodash.clonedeep": "^4.5.0",
     "mocha": "^4.0.1",
-    "vinyl-commonjs-dependencies": "^0.5.4"
+    "vinyl-commonjs-dependencies": "^0.7.4"
   },
   "directories": {},
   "homepage": "https://github.com/ssimpo/require-extra#readme",
@@ -87,16 +93,14 @@
     "nodeTargets": [
       "9.0.0",
       "8.7.0",
-      "8.6.0",
-      "8.2.1",
-      "7.10.1",
-      "7.5.0",
-      "6.11.4",
-      "6.4.0",
-      "5.12.0",
-      "4.8.4",
-      "0.12.18",
-      "0.10.48"
+      "8.3.0",
+      "8.0.0",
+      "7.6.0",
+      "7.0.0",
+      "6.5.0",
+      "6.0.0",
+      "5.0.0",
+      "4.0.0"
     ]
   },
   "config": {
@@ -121,6 +125,6 @@
       "syntax-async-generators"
     ]
   },
-  "engines": ">=6.0.0",
-  "version": "0.6.0"
+  "engines": ">=4.0.0",
+  "version": "0.7.0"
 }
