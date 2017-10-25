@@ -31,8 +31,8 @@ function fn(gulp, done) {
       .pipe(commonjsBrowserWrap({
         type:'moduleWrap',
         main:__cwd + gulpSettings.main,
-        includeGlobal:true,
-        insertAtTop: (semvar.lt(target, '8.0.0') ? 'require("babel-polyfill");' : '')
+        includeGlobal:true
+        //insertAtTop: (semvar.lt(target, '8.0.0') ? 'require("babel-polyfill");' : '')
       }))
       .pipe(gulp.dest(__cwd + gulpSettings.build))
       .on('end', ()=>{
@@ -46,8 +46,8 @@ function fn(gulp, done) {
           .pipe(commonjsBrowserWrap({
             type:'moduleWrap',
             main:__cwd + gulpSettings.tests + '/' + gulpSettings.main,
-            includeGlobal:true,
-            insertAtTop: (semvar.lt(target, '8.0.0') ? 'require("babel-polyfill");' : '')
+            includeGlobal:true
+            //.insertAtTop: (semvar.lt(target, '8.0.0') ? 'require("babel-polyfill");' : '')
           }))
           .pipe(gulp.dest(__cwd + gulpSettings.tests + '/' + gulpSettings.build))
           .on('end', ()=>{
