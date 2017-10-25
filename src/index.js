@@ -6,6 +6,7 @@ const config = new Map();
 
 _set('resolver', require('resolve'));
 _set('extensions', ['.js', '.json', '.node']);
+_set('moduleDirectory', 'node_modules');
 
 const path = require('path');
 const _eval = require('./eval');
@@ -19,9 +20,10 @@ const {
   uniq,
   readDir,
   readFile,
-  makeArray
-  } = require('./util');
-
+  makeArray,
+  promisify,
+  flattenDeep
+} = require('./util');
 const resolver = getResolver();
 const callsite = require('callsite');
 
@@ -168,7 +170,7 @@ async function _loadModule(modulePath) {
  * @returns {*}
  */
 function _loadModuleSync(modulePath) {
-  return Promise.promisify(setImmediate)().then(()=>require(modulePath));
+  return promisify(setImmediate)().then(()=>require(modulePath));
 }
 
 /**
@@ -258,17 +260,19 @@ function _requireSync(userResolver, moduleName, callback) {
  * @param {string} [ext=_get('extensions')]   File extension filter to use.
  * @returns {Promise.<string[]>}              Promise resolving to array of files.
  */
-function _filesInDirectory(dirPath, ext=_get('extensions')) {
+async function _filesInDirectory(dirPath, ext=_get('extensions')) {
   dirPath = _getCallingDir(dirPath);
   let xExt = _getExtensionRegEx(ext);
 
-  return readDir(dirPath).then(
-    file=>file, err=>[]
-  ).filter(
-    fileName=>xExt.test(fileName)
-  ).map(
-    fileName=>path.resolve(dirPath, fileName)
-  );
+  try {
+    return (await readDir(dirPath)).filter(
+      fileName=>xExt.test(fileName)
+    ).map(
+      fileName=>path.resolve(dirPath, fileName)
+    );
+  } catch (err) {
+    return [];
+  }
 }
 
 /**
@@ -344,33 +348,34 @@ function _canImport(fileName, callingFileName, options) {
  * @param {boolean} [options.merge=false]                         Merge exported properties & methods together.
  * @returns {Promise.<Object>}
  */
-function importDirectory(dirPath, options) {
+async function importDirectory(dirPath, options) {
   options = options || {};
   let imports = (options.imports ? options.imports : {});
   let caller = _getCallingFileName();
   let _require = (options.useSyncRequire ? _requireSync : requireAsync);
 
-  return _filesInDirectory(dirPath, options.extension).map(fileName=>{
-    if (_canImport(fileName, caller, options)) {
-      return _require(fileName).then(
-        mod=>Promise.resolve(mod)
-      ).then(mod=>{
-        if (options.merge === true) {
-          if (isFunction(mod)) {
-            imports[_getFileName(fileName, options.extension)] = mod;
-          } else {
-            assign(imports, mod);
-          }
-        } else {
-          imports[_getFileName(fileName, options.extension)] = mod;
-        }
+  let files = await Promise.all(makeArray(dirPath)
+    .map(async (dirPath)=>await _filesInDirectory(dirPath, options.extension))
+  );
 
-        if (options.callback) options.callback(fileName, mod);
-      });
+  await Promise.all(flattenDeep(files).map(async (fileName)=>{
+    if (!_canImport(fileName, caller, options)) return fileName;
+    let mod = await _require(fileName);
+
+    if (options.merge === true) {
+      if (isFunction(mod)) {
+        imports[_getFileName(fileName, options.extension)] = mod;
+      } else {
+        assign(imports, mod);
+      }
     } else {
-      return fileName;
+      imports[_getFileName(fileName, options.extension)] = mod;
     }
-  }).then(fileNames=>imports);
+
+    if (options.callback) setImmediate(()=>options.callback(fileName, mod));
+  }));
+
+  return imports;
 }
 
 /**
@@ -379,7 +384,7 @@ function importDirectory(dirPath, options) {
  *
  * @public
  * @param {string|Array} modulePath             Module path or array of paths.
- * @param {*} [defaultReturnValue=false]        The default value to return
+ * @param {*} [defaultReturnValue=undefined]    The default value to return
  *                                              if module load fails.
  * @returns {Promise.<*>}
  */
@@ -394,12 +399,12 @@ function getModule(useSync, modulePath, defaultReturnValue) {
   if (modulePath) {
     modulePath = makeArray(modulePath);
     return _require(modulePath.shift()).catch(error=>{
-      if(modulePath.length) return getModule(modulePath, defaultReturnValue);
-      return Promise.resolve([defaultReturnValue] || false);
+      if(modulePath.length) return getModule(useSync, modulePath, defaultReturnValue);
+      return Promise.resolve(defaultReturnValue);
     });
   }
 
-  return Promise.resolve(defaultReturnValue || false);
+  return Promise.resolve(defaultReturnValue);
 }
 
 /**
@@ -414,7 +419,7 @@ function getModule(useSync, modulePath, defaultReturnValue) {
 function getResolver(options={}) {
   const _options = Object.assign({
     extensions: _get('extensions'),
-    moduleDirectory: options.moduleDirectory || options.modules,
+    moduleDirectory: options.moduleDirectory || options.modules || _get('moduleDirectory'),
     preserveSymlinks: false
   }, options);
 
@@ -432,11 +437,19 @@ function getResolver(options={}) {
         })
       }
     },
-    addExtensions: ext=>{
-      _options.extensions.push(ext);
+    addExtensions: (...ext)=>{
+      _options.extensions.push(...flattenDeep(ext));
       _options.extensions = uniq(_options.extensions);
+      return  _options.extensions;
     },
-    getState: ()=>Object.assign({}, _options)
+    removeExtensions: (...ext)=>{
+      flattenDeep(ext).forEach(ext=>{
+        _options.extensions = _options.extensions.filter(_ext=>(ext !== _ext))
+      });
+      return  _options.extensions;
+    },
+    getState: ()=>Object.assign({}, _options),
+    isCoreModule: moduleId=>!!_get('resolver').isCore(moduleId)
   }
 }
 
@@ -491,11 +504,6 @@ requireAsync.delete = _delete;
  * @type {function}
  */
 module.exports = requireAsync;
-
-process.on('unhandledRejection', (reason, p) => {
-  console.log('Unhandled Rejection at: Promise', p, 'reason:', reason);
-  // application specific logging, throwing an error, or other logic here
-});
 
 try {
   __module.exports = module.exports;

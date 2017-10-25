@@ -1,11 +1,9 @@
 'use strict';
 
-const Promise = require('bluebird');  // jshint ignore:line
 const fs = require('fs');
 const util = require('lodash-provider');
+const _util = require('util');
 
-util.readDir = Promise.promisify(fs.readdir);
-util.readFile = Promise.promisify(fs.readFile);
 
 /**
  * Turn the given value into an array.  If it is already an array then return it; if it is a set then convert to an
@@ -22,5 +20,26 @@ util.makeArray = function makeArray(value) {
   if (value instanceof Set) return [...value];
   return util.castArray(value);
 };
+
+util.promisify = function promisify(func) {
+  if (_util.promisify) return _util.promisify(func);
+
+  return (...params)=>{
+    return new Promise((resolve, reject)=>{
+      params.push((err, results,...moreResults)=>{
+        if (err) return reject(err);
+        if (moreResults.length) {
+          moreResults.unshift(results);
+          return resolve(moreResults);
+        }
+        return resolve(results);
+      });
+      func(...params);
+    });
+  };
+};
+
+util.readDir = util.promisify(fs.readdir);
+util.readFile = util.promisify(fs.readFile);
 
 module.exports = util;

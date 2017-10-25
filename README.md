@@ -131,7 +131,7 @@ myResolverClass = requireX.getResolver({
 
 ## Trying multiple paths for a module
 
-The method *getModule()* will try an array of paths looking for a module until it it finds the requested file.  Module is loaded and returned or a default value (defaults to false).
+The method *getModule()* will try an array of paths looking for a module until it it finds the requested file.  Module is loaded and returned or a default value (defaults to undefined).
 
 ```javascript
 var requireX = require('require-extra');

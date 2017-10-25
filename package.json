@@ -24,13 +24,12 @@
     "yarn.lock"
   ],
   "dependencies": {
-    "async-resolve": "^0.3.5",
     "babel-polyfill": "^6.26.0",
-    "bluebird": "^3.5.1",
     "callsite": "^1.0.0",
     "lodash-provider": "^1.4.0",
     "lodash.assign": "^4.2.0",
     "lodash.castarray": "^4.4.0",
+    "lodash.flattendeep": "^4.4.0",
     "lodash.intersection": "^4.4.0",
     "lodash.isarray": "^4.0.0",
     "lodash.isboolean": "^3.0.3",
