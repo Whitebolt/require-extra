@@ -28,3 +28,8 @@ node_modules
 
 #Webstorm IDE - This could be defined globally in the system but I like to put it here.
 .idea/
+
+build/
+test/build/
+!test/node_modules/
+test/forTests/index.json
