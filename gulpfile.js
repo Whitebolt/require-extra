@@ -4,7 +4,7 @@
 // @note We are avoiding ES6 here.
 
 const xIsJsFile = /\.js$/i;
-require('./lib/importSettings')('gulp', ['babel']);
+require('./src/importSettings')('gulp', ['babel']);
 
 const fs = require('fs');
 const gulp = require('gulp');

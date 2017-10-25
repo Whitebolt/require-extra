@@ -4,12 +4,19 @@
 ## Installation
 
 ```bash
-$ npm install require-extra
+$ npm install --save require-extra
 ```
+
+Or
+
+```bash
+$ yarn add require-extra
+```
+
 
 ## Asynchronous loading
 
-The loader returns a [Bluebird](https://github.com/petkaantonov/bluebird) style promise.  All the methods and functionality of the bluebird library are available.
+The loader returns a Promise.
 
 **Note:** Whilst module paths are resolved asynchronously and their content loaded, any requires within the module will load in the normal sychronous way (see [roadmap](ROADMAP.md)).
 
@@ -37,12 +44,22 @@ requireX('express', function(error, express){
 });
 ```
 
+## Promises
+
+**Breaking change:** *This module now uses native promises instead of the bluebird-style it used previously.  The reason for this change is to reduce the dependencies and it make the use of async/await seamless.*
+
+The promise type returned can be overriden by setting the promise library.
+
+```javavascript
+requireX.set('Promise', require('bluebird'));
+```
+
+This will cause all returned promises to be wrapped in the supplied promise library.
+
 
 ## Loading multiple modules at once
 
 The loader can also accept an array of module-id's/paths; this will then load together asynchronously.
-
-**Note:** All modules in the array will load together.  This might not be what you want.  Performance boosts created by caching, where two modules have a shared dependency could be lost.  It is possible in this situation that the dependency will be loaded twice (see [roadmap](ROADMAP.md)).  In most situations this will not be an issue or not happen but this behaviour should be noted and tested if performance is a big issue.
 
 ```javascript
 var requireX = require('require-extra');
@@ -54,12 +71,12 @@ requireX.require(['express' , 'socket.io']).spread(function(express, IO){
 });
 ```
 
+**Note:** All modules in the array will load together.  This might not be what you want.  Performance boosts created by caching, where two modules have a shared dependency could be lost.  It is possible in this situation that the dependency will be loaded twice.  In most situations this will not be an issue or not happen but this behaviour should be noted and tested if performance is a big issue.
+
 
 ## Asynchronous require.resolve()
 
-A resolve method is available.  It works just like the native *require.resolve()*, except asynchronously.  The *resolve()* method is a wrapper around the [async-resolve](https://github.com/Meettya/async-resolve) resolve() method.
-
-**Note:** Will only return a promise at this stage (node callback to follow - see [roadmap](ROADMAP.md)).
+A resolve method is available.  It works just like the native *require.resolve()*, except asynchronously.  The *resolve()* method is a wrapper around [resolve](https://github.com/browserify/resolve).
 
 ```javascript
 var requireX = require('require-extra');
@@ -70,6 +87,8 @@ requireX.resolve('express').then(function(path){
   console.error('Failed to find module express');
 });
 ```
+
+**Possible breaking change:** Previously, the library used the [async-resolve](https://github.com/Meettya/async-resolve) library but this has been swapped for a wrapped version of [resolve](https://github.com/browserify/resolve).  The wrapped version supplies all the same methods and properties as the original async-resolve method so no errors should result.
 
 
 ## Passing options to require() and resolve()
@@ -104,14 +123,10 @@ myResolverClass = requireX.getResolver({
   // default: ['.js', '.json', '.node'] - specify allowed file-types, note that the 
   // order matters. in this example index.js is prioritized over index.coffee 
   extensions: ['.js', '.coffee', '.eco'],
-  // default : false - make searching verbose for debug and tests 
-  log: true
   // default : 'node_modules' - its 'node_modules' directory names, may be changed 
   modules : 'other_modules'
 })
 ```
-
-The returned class instance is actually a Resolver from [async-resolve](https://github.com/Meettya/async-resolve).
 
 
 ## Trying multiple paths for a module

@@ -1,13 +1,12 @@
 /* jshint node: true */
 
-/**
- * @external bluebird
- * @see {@link https://github.com/petkaantonov/bluebird}
- */
-
 'use strict';
 
-const Promise = require('bluebird');  // jshint ignore:line
+const config = new Map();
+
+_set('resolver', require('resolve'));
+_set('extensions', ['.js', '.json', '.node']);
+
 const path = require('path');
 const _eval = require('./eval');
 const {
@@ -22,10 +21,9 @@ const {
   readFile,
   makeArray
   } = require('./util');
-const resolver = new (require('async-resolve'))();
-const callsite = require('callsite');
 
-const defaultExt = resolver.getState().extensions;
+const resolver = getResolver();
+const callsite = require('callsite');
 
 
 /**
@@ -36,7 +34,7 @@ const defaultExt = resolver.getState().extensions;
  * @param {string} moduleName                   Module name or path (same
  *                                              format as supplied
  *                                              to require()).
- * @returns {bluebird}
+ * @returns {Promise.<string>}
  */
 function resolveModulePath(userResolver, moduleName) {
   moduleName = moduleName || userResolver;
@@ -119,7 +117,7 @@ function _getResolve(obj) {
  *
  * @private
  * @param {string} fileName
- * @returns {bluebird}
+ * @returns {Promise.<string>}
  */
 function _loadModuleText(fileName) {
   return readFile(fileName, 'utf8');
@@ -207,9 +205,19 @@ function _requireX(userResolver, moduleName, callback, useSyncResolve=false) {
       _loader(userResolver, moduleName, useSyncResolve)
   );
 
-  if (callback) Promise.resolve(async).nodeify(callback, {spread:true});
-
-  return async;
+  return async.then(modules=>{
+    if (callback) {
+      setImmediate(()=>callback(null, modules));
+    } else {
+      return modules;
+    }
+  }, err=>{
+    if (callback) {
+      setImmediate(()=>callback(err, undefined));
+    } else {
+      return Promise.reject(err);
+    }
+  });
 }
 
 /**
@@ -229,7 +237,7 @@ function _requireX(userResolver, moduleName, callback, useSyncResolve=false) {
  * @param {function} [callback]                 Node-style callback to use
  *                                              instead of (or as well as)
  *                                              returned promise.
- * @returns {bluebird}                          Promise, resolved with the
+ * @returns {Promise.<*>}                       Promise, resolved with the
  *                                              module(s) or undefined.
  */
 function _requireSync(userResolver, moduleName, callback) {
@@ -246,11 +254,11 @@ function _requireSync(userResolver, moduleName, callback) {
  * Get a list of files in the directory.
  *
  * @private
- * @param {string} dirPath            Directory path to scan.
- * @param {string} [ext=defaultExt]   File extension filter to use.
- * @returns {bluebird}                Promise resolving to array of files.
+ * @param {string} dirPath                    Directory path to scan.
+ * @param {string} [ext=_get('extensions')]   File extension filter to use.
+ * @returns {Promise.<string[]>}              Promise resolving to array of files.
  */
-function _filesInDirectory(dirPath, ext=defaultExt) {
+function _filesInDirectory(dirPath, ext=_get('extensions')) {
   dirPath = _getCallingDir(dirPath);
   let xExt = _getExtensionRegEx(ext);
 
@@ -268,11 +276,11 @@ function _filesInDirectory(dirPath, ext=defaultExt) {
  * extensions are passed in or the module default is used.
  *
  * @private
- * @param {string} filePath                 File path to get filename from.
- * @param {Array|string} [ext=defaultExt]   File extension(s) to remove.
- * @returns {string}                        The filename without given extension(s).
+ * @param {string} filePath                         File path to get filename from.
+ * @param {Array|string} [ext=_get('extensions')]   File extension(s) to remove.
+ * @returns {string}                                The filename without given extension(s).
  */
-function _getFileName(filePath, ext=defaultExt) {
+function _getFileName(filePath, ext=_get('extensions')) {
   return path.basename(filePath).replace(_getExtensionRegEx(ext), '');
 }
 
@@ -281,10 +289,10 @@ function _getFileName(filePath, ext=defaultExt) {
  * will then be able to match file paths, which have those extensions.
  *
  * @private
- * @param {Array|string} [ext=defaultExt]     The extension(s).
- * @returns {RegExp}                          File path matcher.
+ * @param {Array|string} [ext=_get('extensions')]     The extension(s).
+ * @returns {RegExp}                                  File path matcher.
  */
-function _getExtensionRegEx(ext=defaultExt) {
+function _getExtensionRegEx(ext=_get('extensions')) {
   let _ext = '(?:' + makeArray(ext).join('|') + ')';
   return new RegExp(_ext + '$');
 }
@@ -298,7 +306,7 @@ function _getExtensionRegEx(ext=defaultExt) {
  * @returns {Array}
  */
 function _getFileTests(fileName, options={}) {
-  let extension =  makeArray(options.extension || defaultExt);
+  let extension =  makeArray(options.extension || _get('extensions'));
   return uniq(
     [path.basename(fileName)].concat(
       extension.map(ext=>path.basename(fileName, ext)
@@ -325,23 +333,16 @@ function _canImport(fileName, callingFileName, options) {
 }
 
 /**
- * Import an entire directory (excluding the file that does the import if it is
- * in the same directory).
+ * Import an entire directory (excluding the file that does the import if it is in the same directory).
  *
  * @public
- * @param {string} dirPath                                Directory to import.
- * @param {Object} [options]                              Import options.
- * @param {Array|string} [options.extension=defaultExt]   Extension of files
- *                                                        to import.
- * @param {Object} [options.imports={}]                   Object to
- *                                                        import into.
- * @param {Function} [options.callback]                   Callback to fire
- *                                                        on each
- *                                                        successful import.
- * @param {boolean} [options.merge=false]                 Merge exported
- *                                                        properties & methods
- *                                                        together.
- * @returns {bluebird}
+ * @param {string} dirPath                                        Directory to import.
+ * @param {Object} [options]                                      Import options.
+ * @param {Array|string} [options.extension=_get('extensions')]   Extension of files to import.
+ * @param {Object} [options.imports={}]                           Object to import into.
+ * @param {Function} [options.callback]                           Callback to fire on each successful import.
+ * @param {boolean} [options.merge=false]                         Merge exported properties & methods together.
+ * @returns {Promise.<Object>}
  */
 function importDirectory(dirPath, options) {
   options = options || {};
@@ -380,7 +381,7 @@ function importDirectory(dirPath, options) {
  * @param {string|Array} modulePath             Module path or array of paths.
  * @param {*} [defaultReturnValue=false]        The default value to return
  *                                              if module load fails.
- * @returns {bluebird}
+ * @returns {Promise.<*>}
  */
 function getModule(useSync, modulePath, defaultReturnValue) {
   if (!isBoolean(useSync)) {
@@ -410,8 +411,33 @@ function getModule(useSync, modulePath, defaultReturnValue) {
  * @returns {Object}          The new resolver object or the current module
  *                            resolver if no options supplied.
  */
-function getResolver(options) {
-  return new (require('async-resolve'))(options || {});
+function getResolver(options={}) {
+  const _options = Object.assign({
+    extensions: _get('extensions'),
+    moduleDirectory: options.moduleDirectory || options.modules,
+    preserveSymlinks: false
+  }, options);
+
+  return {
+    resolve: (moduleId, dir, cb)=>{
+      const resolver = _get('resolver');
+      if (cb) {
+        return resolver(moduleId, Object.assign(_options, {basedir:dir || __dirname}), cb);
+      } else {
+        return new Promise((resolve, reject)=>{
+          resolver(moduleId, Object.assign(_options, {basedir:dir || __dirname}), (err, results)=>{
+            if (err) return reject(err);
+            return resolve(results);
+          });
+        })
+      }
+    },
+    addExtensions: ext=>{
+      _options.extensions.push(ext);
+      _options.extensions = uniq(_options.extensions);
+    },
+    getState: ()=>Object.assign({}, _options)
+  }
 }
 
 /**
@@ -422,7 +448,7 @@ function getResolver(options) {
  * @param {Object} [userResolver=resolver]      User-created resolver function or an options object.
  * @param {string|Array} moduleName             Module name or path (or array of either), same format as for require().
  * @param {function} [callback]                 Node-style callback to use instead of (or as well as) returned promise.
- * @returns {bluebird}                          Promise, resolved with the module(s) or undefined.
+ * @returns {Promise.<*>}                       Promise, resolved with the module(s) or undefined.
  */
 function requireAsync(...params) {
   const userResolver = ((isString(params[0]) || isArray(params[0])) ? resolver : params.shift());
@@ -430,10 +456,30 @@ function requireAsync(...params) {
   return _requireX(userResolver, moduleName, callback, false);
 }
 
-requireAsync.resolve = resolveModulePath;
-requireAsync.getModule = getModule;
-requireAsync.getResolver = getResolver;
-requireAsync.importDirectory = importDirectory;
+function _set(key, value) {
+  config.set(key, value);
+}
+
+function _get(key) {
+  return config.get(key);
+}
+
+function _delete(key) {
+  config.delete(key);
+}
+
+function promiseLibraryWrap(func) {
+  if (_get('Promise')) return _get('Promise').resolve(func);
+  return func;
+}
+
+requireAsync.resolve = promiseLibraryWrap(resolveModulePath);
+requireAsync.getModule = promiseLibraryWrap(getModule);
+requireAsync.getResolver = promiseLibraryWrap(getResolver);
+requireAsync.importDirectory = promiseLibraryWrap(importDirectory);
+requireAsync.get = _get;
+requireAsync.set = _set;
+requireAsync.delete = _delete;
 
 
 
@@ -445,6 +491,11 @@ requireAsync.importDirectory = importDirectory;
  * @type {function}
  */
 module.exports = requireAsync;
+
+process.on('unhandledRejection', (reason, p) => {
+  console.log('Unhandled Rejection at: Promise', p, 'reason:', reason);
+  // application specific logging, throwing an error, or other logic here
+});
 
 try {
   __module.exports = module.exports;

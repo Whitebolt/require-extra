@@ -2,7 +2,7 @@
 /* global chai */
 'use strict';
 
-require(__cwd + 'lib/importSettings')('gulp');
+require(__cwd + 'src/importSettings')('gulp');
 
 const testDir = __cwd + gulpSettings.tests;
 const packageInfo = require(__cwd + 'package.json');
@@ -91,7 +91,8 @@ describe(describeItem(packageInfo), ()=>{
         requireX([
           testDir+'/forTests/testModule1.js',
           testDir+'/forTests/testModule2.js'
-        ]).spread((testModule1, testModule2)=>{
+        ]).then(modules=>{
+          const [testModule1, testModule2] = modules;
           expect(testModule1.testParam).to.equal(1);
           expect(testModule2.testParam).to.equal(2);
           done();
@@ -102,7 +103,8 @@ describe(describeItem(packageInfo), ()=>{
         requireX([
           testDir+'/forTests/testModule1.js',
           testDir+'/forTests/testModule2.js'
-        ], (error, testModule1, testModule2)=>{
+        ], (error, modules)=>{
+          const [testModule1, testModule2] = modules;
           expect(error).to.equal(null);
           expect(testModule1.testParam).to.equal(1);
           expect(testModule2.testParam).to.equal(2);

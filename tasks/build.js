@@ -2,7 +2,7 @@
 
 const babel = require('gulp-babel');
 const concat = require('gulp-concat');
-const util = require(__cwd + '/lib/util');
+const util = require(__cwd + '/src/util');
 const semvar = require('semver');
 const vcjd = require('vinyl-commonjs-dependencies');
 const commonjsBrowserWrap = require('gulp-commonjs-browser-wrap');
@@ -37,15 +37,15 @@ function fn(gulp, done) {
       .pipe(gulp.dest(__cwd + gulpSettings.build))
       .on('end', ()=>{
         vcjd.src([
-          __cwd + gulpSettings.tests + '/src/' + gulpSettings.main,
-          './lib/importSettings'
+          __cwd + gulpSettings.tests + '/' + gulpSettings.main,
+          './src/importSettings'
         ], {internalOnly:true})
           .pipe(commonjsBrowserWrap())
           .pipe(concat(target + '.js'))
           .pipe(babel(babelSettings))
           .pipe(commonjsBrowserWrap({
             type:'moduleWrap',
-            main:__cwd + gulpSettings.tests + '/src/' + gulpSettings.main,
+            main:__cwd + gulpSettings.tests + '/' + gulpSettings.main,
             includeGlobal:true,
             insertAtTop: (semvar.lt(target, '8.0.0') ? 'require("babel-polyfill");' : '')
           }))
