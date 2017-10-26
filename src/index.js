@@ -12,10 +12,8 @@ const path = require('path');
 const _eval = require('./eval');
 const {
   isString,
-  isArray,
   isBoolean,
   isFunction,
-  assign,
   intersection,
   uniq,
   readDir,
@@ -196,7 +194,7 @@ async function _loader(userResolver, moduleName, useSyncResolve) {
  */
 async function _requireX(userResolver, moduleName, callback, useSyncResolve=false) {
   try {
-    const modules = await (isArray(moduleName) ?
+    const modules = await (Array.isArray(moduleName) ?
         Promise.all(moduleName.map(moduleName=>_loader(userResolver, moduleName, useSyncResolve))) :
         _loader(userResolver, moduleName, useSyncResolve)
     );
@@ -230,7 +228,7 @@ async function _requireX(userResolver, moduleName, callback, useSyncResolve=fals
  *                                              module(s) or undefined.
  */
 function _requireSync(userResolver, moduleName, callback) {
-  if(isString(userResolver) || isArray(userResolver)) {
+  if(isString(userResolver) || Array.isArray(userResolver)) {
     [callback, moduleName, userResolver] = [moduleName, userResolver, resolver];
   }
   return _requireX(userResolver, moduleName, callback, true);
@@ -257,6 +255,11 @@ async function _filesInDirectory(dirPath, ext=_get('extensions')) {
   } catch (err) {
     return [];
   }
+}
+
+async function filesInDirectories(dirPaths, ext=_get('extensions')) {
+  let files = await Promise.all(dirPaths.map(dirPath=>_filesInDirectory(dirPath, ext)));
+  return flattenDeep(files);
 }
 
 /**
@@ -304,7 +307,7 @@ function _getFileTests(fileName, options={}) {
 }
 
 /**
- * Can a filename be imported according to the rules the suppllied options.
+ * Can a filename be imported according to the rules the supplied options.
  *
  * @private
  * @param {string} fileName         Filename to test.
@@ -323,48 +326,86 @@ function _canImport(fileName, callingFileName, options) {
 /**
  * Import an entire directory (excluding the file that does the import if it is in the same directory).
  *
- * @public
+ * @async
  * @param {string} dirPath                                        Directory to import.
  * @param {Object} [options]                                      Import options.
  * @param {Array|string} [options.extension=_get('extensions')]   Extension of files to import.
  * @param {Object} [options.imports={}]                           Object to import into.
- * @param {Function} [options.callback]                           Callback to fire on each successful import.
+ * @param {Function} [options.onload]                             Callback to fire on each successful import.
  * @param {boolean} [options.merge=false]                         Merge exported properties & methods together.
  * @returns {Promise.<Object>}
  */
-async function importDirectory(dirPath, options) {
-  options = options || {};
-  let imports = (options.imports ? options.imports : {});
-  let caller = _getCallingFileName();
-  let _require = (options.useSyncRequire ? _requireSync : requireAsync);
+async function _importDirectory(dirPath, options={}) {
+  _importDirectoryOptionsParser(options);
+  const modDefs = await _importDirectoryModules(dirPath, options);
 
-  let files = await Promise.all(makeArray(dirPath)
-    .map(async (dirPath)=>await _filesInDirectory(dirPath, options.extension))
-  );
+  modDefs.forEach(([fileName, module])=>{
+    if (options.onload) options.onload(fileName, module);
+    if ((options.merge === true) && (!isFunction(module))) return Object.assign(options.imports, module);
+    options.imports[_getFileName(fileName, options.extension)] = module;
+  });
 
-  await Promise.all(flattenDeep(files).map(async (fileName)=>{
-    if (!_canImport(fileName, caller, options)) return fileName;
-    let mod = await _require(fileName);
-
-    if (options.merge === true) {
-      if (isFunction(mod)) {
-        imports[_getFileName(fileName, options.extension)] = mod;
-      } else {
-        assign(imports, mod);
-      }
-    } else {
-      imports[_getFileName(fileName, options.extension)] = mod;
-    }
-
-    if (options.callback) setImmediate(()=>options.callback(fileName, mod));
-  }));
-
-  return imports;
+  return options.imports;
 }
 
 /**
- * Load a module or return a default value.  Can take an array to try.  Will
- * load module asynchronously.
+ * Parse the input options, filling-in any defaults.
+ *
+ * @private
+ * @param {Object} [options={}]   The options to parse.
+ * @returns {Object}
+ */
+function _importDirectoryOptionsParser(options={}) {
+  options.imports = options.imports || {};
+  options.onload = options.onload || options.callback;
+  options.useSyncRequire = !!options.useSyncRequire;
+  options.merge = !!options.merge;
+  options.extension = _get('extensions');
+  if (options.callback) console.warn('The options.callback method is deprecated, please use options.onload() instead.');
+
+  return options;
+}
+
+/**
+ * Take a directory path(s) and pull-in all modules returning an array with the filename as the first item
+ * and module as the second
+ *
+ * @private
+ * @async
+ * @param {string|Array.<string>} dirPath     Directories to import.
+ * @param {Object} options                    Import options.
+ * @returns {Promise.<Array>}                 The module definitions.
+ */
+async function _importDirectoryModules(dirPath, options) {
+  const caller = _getCallingFileName();
+  const require = (options.useSyncRequire ? _requireSync : requireAsync);
+  const files = await filesInDirectories(makeArray(dirPath), options.extension);
+  const modDefs = await Promise.all(files.map(async (fileName)=> {
+    if (_canImport(fileName, caller, options)) return [fileName, await require(fileName)];
+  }));
+
+  return modDefs.filter(modDef=>modDef);
+}
+
+/**
+ * Import all the modules in a set of given paths,according to the supplied options.
+ *
+ * @public
+ * @param {string|Array.<string>} dirPath   The path(s) to import frpm.
+ * @param {Object} [options='']             The option to use in the import.
+ * @param {Function} [callback]             Node-style callback to fire, use if you do not want a promise.
+ * @returns {Promise.<Object>}
+ */
+function importDirectory(dirPath, options, callback) {
+  if (!callback) return _importDirectory(dirPath, options);
+  _importDirectory(dirPath, options).then(
+    imports=>setImmediate(()=>callback(null, imports)),
+    err=>setImmediate(()=>callback(err, undefined))
+  );
+}
+
+/**
+ * Load a module or return a default value.  Can take an array to try.  Will load module asynchronously.
  *
  * @public
  * @param {string|Array} modulePath             Module path or array of paths.
@@ -372,21 +413,31 @@ async function importDirectory(dirPath, options) {
  *                                              if module load fails.
  * @returns {Promise.<*>}
  */
-function getModule(useSync, modulePath, defaultReturnValue) {
+function tryModule(useSync, modulePath, defaultReturnValue) {
   if (!isBoolean(useSync)) [defaultReturnValue, modulePath, useSync] = [modulePath, useSync, false];
   if (!modulePath) return defaultReturnValue;
   modulePath = makeArray(modulePath);
 
   const _require = (useSync ? _requireSync : requireAsync);
-  return _getModule(modulePath, defaultReturnValue, _require);
+  return _tryModule(modulePath, defaultReturnValue, _require);
 }
 
-async function _getModule(modulePath, defaultReturnValue, require) {
+/**
+ * Load a module or return a default value.  Can take an array to try.  Will load module asynchronously.
+ *
+ * @private
+ * @async
+ * @param {Array.<string>} modulePath   Paths to try.
+ * @param {*} defaultReturnValue        Default value to return.
+ * @param {Function} require            Require to use.
+ * @returns {*}
+ */
+async function _tryModule(modulePath, defaultReturnValue, require) {
   try {
     return await require(modulePath.shift());
   } catch (err) { }
   if(!modulePath.length) return defaultReturnValue;
-  return getModule(modulePath, defaultReturnValue, require);
+  return tryModule(modulePath, defaultReturnValue, require);
 }
 
 /**
@@ -446,7 +497,7 @@ function getResolver(options={}) {
  * @returns {Promise.<*>}                       Promise, resolved with the module(s) or undefined.
  */
 function requireAsync(...params) {
-  const userResolver = ((isString(params[0]) || isArray(params[0])) ? resolver : params.shift());
+  const userResolver = ((isString(params[0]) || Array.isArray(params[0])) ? resolver : params.shift());
   const [moduleName, callback] = params;
   return _requireX(userResolver, moduleName, callback, false);
 }
@@ -469,7 +520,11 @@ function promiseLibraryWrap(func) {
 }
 
 requireAsync.resolve = promiseLibraryWrap(resolveModulePath);
-requireAsync.getModule = promiseLibraryWrap(getModule);
+requireAsync.getModule = (...params)=>{
+  console.warn('Use of getModule() is deprecated, please use try() instead, it is exactly the same.')
+  return promiseLibraryWrap(tryModule(...params));
+};
+requireAsync.try = promiseLibraryWrap(tryModule);
 requireAsync.getResolver = promiseLibraryWrap(getResolver);
 requireAsync.importDirectory = promiseLibraryWrap(importDirectory);
 requireAsync.get = _get;

@@ -131,12 +131,12 @@ myResolverClass = requireX.getResolver({
 
 ## Trying multiple paths for a module
 
-The method *getModule()* will try an array of paths looking for a module until it it finds the requested file.  Module is loaded and returned or a default value (defaults to undefined).
+The method *try()* will try an array of paths looking for a module until it it finds the requested file.  Module is loaded and returned or a default value (defaults to undefined).
 
 ```javascript
 var requireX = require('require-extra');
 
-requireX.getModule(
+requireX.try(
   ['/somePath', '../some/other/path'], null
 ).then(function(someModule){
   if(someModule !== null){
@@ -149,12 +149,12 @@ requireX.getModule(
 });
 ```
 
-You can also use the native require by passing ***true*** as the first option to *getModule*. This is useful if you want to to try different module paths but do not want to use an async require.  The method still returns a promise and the requires are actually done on *nextTick()* but using the native node *require()*.
+You can also use the native require by passing ***true*** as the first option to *try*. This is useful if you want to to try different module paths but do not want to use an async require.  The method still returns a promise and the requires are actually done on *nextTick()* but using the native node *require()*.
 
 ```javascript
 var requireX = require('require-extra');
 
-requireX.getModule(
+requireX.try(
   true
   ['/somePath', '../some/other/path'], null
 ).then(function(someModule){
