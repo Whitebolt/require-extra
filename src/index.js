@@ -39,16 +39,9 @@ const callsite = require('callsite');
  * @returns {Promise.<string>}
  */
 function resolveModulePath(userResolver, moduleName) {
-  moduleName = moduleName || userResolver;
-  userResolver = userResolver || resolver;
-
+  [moduleName, userResolver] = [moduleName || userResolver, userResolver || resolver];
   let dir = _getRoot(userResolver);
-  return new Promise((resolve, reject)=>{
-    _getResolve(userResolver).resolve(moduleName, dir, (err, modulePath)=>{
-      if (err) return reject(err);
-      return resolve(modulePath);
-    });
-  });
+  return _getResolve(userResolver).resolve(moduleName, dir);
 }
 
 /**
@@ -201,25 +194,19 @@ async function _loader(userResolver, moduleName, useSyncResolve) {
  *                                              require function from this module, which is async.
  * @returns {Promise.<*|undefined>}             Promise, resolved with the module(s) or undefined.
  */
-function _requireX(userResolver, moduleName, callback, useSyncResolve=false) {
-  const async = (isArray(moduleName) ?
-      Promise.all(moduleName.map(moduleName=>_loader(userResolver, moduleName, useSyncResolve))) :
-      _loader(userResolver, moduleName, useSyncResolve)
-  );
+async function _requireX(userResolver, moduleName, callback, useSyncResolve=false) {
+  try {
+    const modules = await (isArray(moduleName) ?
+        Promise.all(moduleName.map(moduleName=>_loader(userResolver, moduleName, useSyncResolve))) :
+        _loader(userResolver, moduleName, useSyncResolve)
+    );
 
-  return async.then(modules=>{
-    if (callback) {
-      setImmediate(()=>callback(null, modules));
-    } else {
-      return modules;
-    }
-  }, err=>{
-    if (callback) {
-      setImmediate(()=>callback(err, undefined));
-    } else {
-      return Promise.reject(err);
-    }
-  });
+    if (!callback) return modules;
+    setImmediate(()=>callback(null, modules));
+  } catch (err) {
+    if (!callback) return Promise.reject(err);
+    setImmediate(()=>callback(err, undefined));
+  }
 }
 
 /**
@@ -243,12 +230,9 @@ function _requireX(userResolver, moduleName, callback, useSyncResolve=false) {
  *                                              module(s) or undefined.
  */
 function _requireSync(userResolver, moduleName, callback) {
-  if(isString(userResolver) || isArray(userResolver)){
-    callback = moduleName;
-    moduleName = userResolver;
-    userResolver = resolver;
+  if(isString(userResolver) || isArray(userResolver)) {
+    [callback, moduleName, userResolver] = [moduleName, userResolver, resolver];
   }
-
   return _requireX(userResolver, moduleName, callback, true);
 }
 
@@ -389,22 +373,20 @@ async function importDirectory(dirPath, options) {
  * @returns {Promise.<*>}
  */
 function getModule(useSync, modulePath, defaultReturnValue) {
-  if (!isBoolean(useSync)) {
-    defaultReturnValue = modulePath;
-    modulePath = useSync;
-    useSync = false;
-  }
+  if (!isBoolean(useSync)) [defaultReturnValue, modulePath, useSync] = [modulePath, useSync, false];
+  if (!modulePath) return defaultReturnValue;
+  modulePath = makeArray(modulePath);
 
-  let _require = (useSync ? _requireSync : requireAsync);
-  if (modulePath) {
-    modulePath = makeArray(modulePath);
-    return _require(modulePath.shift()).catch(error=>{
-      if(modulePath.length) return getModule(useSync, modulePath, defaultReturnValue);
-      return Promise.resolve(defaultReturnValue);
-    });
-  }
+  const _require = (useSync ? _requireSync : requireAsync);
+  return _getModule(modulePath, defaultReturnValue, _require);
+}
 
-  return Promise.resolve(defaultReturnValue);
+async function _getModule(modulePath, defaultReturnValue, require) {
+  try {
+    return await require(modulePath.shift());
+  } catch (err) { }
+  if(!modulePath.length) return defaultReturnValue;
+  return getModule(modulePath, defaultReturnValue, require);
 }
 
 /**
