@@ -10,7 +10,7 @@ const getterOverrides = {
 };
 
 const setterOverrides = {
-    extensions: value=>uniq(makeArray(value))
+  extensions: value=>uniq(makeArray(value))
 };
 
 /**
@@ -23,7 +23,7 @@ class RequireExtraSettings extends Map {
     super(...params);
     singleton = this;
     Object.keys(config).forEach(key=>this.set(key, config[key]));
-    this.set('resolver', require('resolve'));
+    this.set('resolve-module', require('resolve'));
   }
 
   add(key, value) {
@@ -31,8 +31,14 @@ class RequireExtraSettings extends Map {
   }
 
   get(key) {
+    let value = super.get(key);
     if (getterOverrides.hasOwnProperty(key)) return super.set(key, getterOverrides[key](value));
-    return super.get(key);
+    if ((key === 'resolver') && !value) {
+      const getResolver = require('./resolver');
+      value = getResolver();
+      this.set('resolver', value);
+    }
+    return value;
   }
 
   set(key, value) {

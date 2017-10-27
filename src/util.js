@@ -1,6 +1,8 @@
 'use strict';
 
 const fs = require('fs');
+const path = require('path');
+const callsite = require('callsite');
 const util = require('lodash-provider');
 const _util = require('util');
 
@@ -37,6 +39,45 @@ util.promisify = function promisify(func) {
       func(...params);
     });
   };
+};
+
+/**
+ * Calculate the calling filename by examing the stack-trace.
+ *
+ * @private
+ * @returns {string}      Filename of calling file.
+ */
+util.getCallingFileName = function getCallingFileName() {
+  /**
+   * Generator for all the files in the current stack trace.
+   *
+   * @generator
+   * @yield {string}    Full path of file.
+   */
+  function* stackIterator() {
+    const trace = callsite();
+    for (let n=0; n<trace.length; n++) {
+      if (!trace[n].isNative()) {
+        const filename = trace[n].getFileName();
+        if (filename) yield filename;
+      }
+    }
+  }
+
+  const filetrace = [...stackIterator()];
+  return filetrace[filetrace.lastIndexOf(__filename)+1];
+};
+
+/**
+ * Calculate the calling directory path by examining the stack-trace.
+ *
+ * @private
+ * @param {string} resolveTo    The directory to resolve to.
+ * @returns {string}            Directory path
+ */
+util.getCallingDir = function getCallingDir(resolveTo) {
+  const filename = util.getCallingFileName();
+  if (filename) return path.resolve(...[path.dirname(filename), ...util.makeArray(resolveTo)]);
 };
 
 /**

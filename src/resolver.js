@@ -1,7 +1,7 @@
 'use strict';
 
 const config = require('./config');
-const {uniq, flattenDeep, pick, promisify, makeArray, pullAll} = require('./util');
+const {uniq, flattenDeep, pick, promisify, makeArray, without} = require('./util');
 const Private = require("./Private");
 
 const allowedOptions = [
@@ -27,7 +27,7 @@ class Resolver {
   }
 
   resolve(moduleId, dir, cb) {
-    const resolver = config.get('resolver');
+    const resolver = config.get('resolve-module');
     const options = Object.assign(pick(this, allowedOptions), {basedir:dir || __dirname});
     return (cb ? resolver(moduleId, options, cb) : promisify(resolver)(moduleId, options));
   }
@@ -38,7 +38,7 @@ class Resolver {
   }
 
   removeExtensions (...ext) {
-    this.extensions = pullAll(this.extensions, flattenDeep(ext));
+    this.extensions = without(this.extensions, ...flattenDeep(ext));
     return this.extensions;
   }
 
@@ -56,7 +56,7 @@ class Resolver {
   }
 
   isCoreModule(moduleId) {
-    return !!config.get('resolver').isCore(moduleId);
+    return !!config.get('resolve-module').isCore(moduleId);
   }
 }
 

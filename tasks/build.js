@@ -7,6 +7,11 @@ const semvar = require('semver');
 const vcjd = require('vinyl-commonjs-dependencies');
 const commonjsBrowserWrap = require('gulp-commonjs-browser-wrap');
 
+const vcJdOptions = {
+  internalOnly:true,
+  debugVcjd: false
+};
+
 function getBabelSettings(target) {
   const babelSettings = util.cloneDeep(gulpSettings.babel);
   babelSettings.presets[0][1].targets.node = target;
@@ -20,36 +25,39 @@ function getBabelSettings(target) {
   return babelSettings;
 }
 
+function wrapSettings(base='') {
+  return {
+    type:'moduleWrap',
+    main:__cwd + base + gulpSettings.main,
+    includeGlobal:true
+  };
+}
+
+function getDest(base='') {
+  return __cwd + base + gulpSettings.build;
+}
+
 function fn(gulp, done) {
   gulpSettings.nodeTargets.forEach((target, n)=>{
     const babelSettings = getBabelSettings(target);
+    const outputFilename = target + '.js';
 
-    vcjd.src([__cwd + gulpSettings.main], {internalOnly:true})
+    vcjd.src([__cwd + gulpSettings.main], vcJdOptions)
       .pipe(commonjsBrowserWrap())
-      .pipe(concat(target + '.js'))
+      .pipe(concat(outputFilename))
       .pipe(babel(babelSettings))
-      .pipe(commonjsBrowserWrap({
-        type:'moduleWrap',
-        main:__cwd + gulpSettings.main,
-        includeGlobal:true
-        //insertAtTop: (semvar.lt(target, '8.0.0') ? 'require("babel-polyfill");' : '')
-      }))
-      .pipe(gulp.dest(__cwd + gulpSettings.build))
+      .pipe(commonjsBrowserWrap(wrapSettings()))
+      .pipe(gulp.dest(getDest()))
       .on('end', ()=>{
         vcjd.src([
           __cwd + gulpSettings.tests + '/' + gulpSettings.main,
           './src/importSettings'
-        ], {internalOnly:true})
+        ], vcJdOptions)
           .pipe(commonjsBrowserWrap())
-          .pipe(concat(target + '.js'))
+          .pipe(concat(outputFilename))
           .pipe(babel(babelSettings))
-          .pipe(commonjsBrowserWrap({
-            type:'moduleWrap',
-            main:__cwd + gulpSettings.tests + '/' + gulpSettings.main,
-            includeGlobal:true
-            //.insertAtTop: (semvar.lt(target, '8.0.0') ? 'require("babel-polyfill");' : '')
-          }))
-          .pipe(gulp.dest(__cwd + gulpSettings.tests + '/' + gulpSettings.build))
+          .pipe(commonjsBrowserWrap(wrapSettings(gulpSettings.tests + '/')))
+          .pipe(gulp.dest(getDest(gulpSettings.tests + '/')))
           .on('end', ()=>{
             if (n >= (gulpSettings.nodeTargets.length - 1)) done();
           })
