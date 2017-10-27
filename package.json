@@ -49,13 +49,13 @@
     "babel-preset-env": "^1.6.1",
     "chai": "^4.1.2",
     "gulp-babel": "^7.0.0",
-    "gulp-commonjs-browser-wrap": "^0.6.2",
+    "gulp-commonjs-browser-wrap": "^0.6.5",
     "gulp-concat": "^2.6.1",
     "gulp-mocha": "^4.3.1",
     "jsdoc-api": "^4.0.0",
     "lodash.clonedeep": "^4.5.0",
     "mocha": "^4.0.1",
-    "vinyl-commonjs-dependencies": "^0.7.4"
+    "vinyl-commonjs-dependencies": "^0.7.6"
   },
   "directories": {},
   "homepage": "https://github.com/ssimpo/require-extra#readme",
@@ -104,7 +104,12 @@
     ]
   },
   "config": {
-    "port": 80
+    "extensions": [
+      ".js",
+      ".json",
+      ".node"
+    ],
+    "moduleDirectory": "node_modules"
   },
   "scripts": {
     "test": "./gulpfile.js test"

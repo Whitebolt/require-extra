@@ -1,13 +1,7 @@
 /* jshint node: true */
-
 'use strict';
 
-const config = new Map();
-
-_set('resolver', require('resolve'));
-_set('extensions', ['.js', '.json', '.node']);
-_set('moduleDirectory', 'node_modules');
-
+const config = require('./config');
 const path = require('path');
 const _eval = require('./eval');
 const {
@@ -238,11 +232,11 @@ function _requireSync(userResolver, moduleName, callback) {
  * Get a list of files in the directory.
  *
  * @private
- * @param {string} dirPath                    Directory path to scan.
- * @param {string} [ext=_get('extensions')]   File extension filter to use.
- * @returns {Promise.<string[]>}              Promise resolving to array of files.
+ * @param {string} dirPath                          Directory path to scan.
+ * @param {string} [ext=config.get('extensions')]   File extension filter to use.
+ * @returns {Promise.<string[]>}                    Promise resolving to array of files.
  */
-async function _filesInDirectory(dirPath, ext=_get('extensions')) {
+async function _filesInDirectory(dirPath, ext=config.get('extensions')) {
   dirPath = _getCallingDir(dirPath);
   let xExt = _getExtensionRegEx(ext);
 
@@ -257,7 +251,7 @@ async function _filesInDirectory(dirPath, ext=_get('extensions')) {
   }
 }
 
-async function filesInDirectories(dirPaths, ext=_get('extensions')) {
+async function filesInDirectories(dirPaths, ext=config.get('extensions')) {
   let files = await Promise.all(dirPaths.map(dirPath=>_filesInDirectory(dirPath, ext)));
   return flattenDeep(files);
 }
@@ -267,11 +261,11 @@ async function filesInDirectories(dirPaths, ext=_get('extensions')) {
  * extensions are passed in or the module default is used.
  *
  * @private
- * @param {string} filePath                         File path to get filename from.
- * @param {Array|string} [ext=_get('extensions')]   File extension(s) to remove.
- * @returns {string}                                The filename without given extension(s).
+ * @param {string} filePath                               File path to get filename from.
+ * @param {Array|string} [ext=config.get('extensions')]   File extension(s) to remove.
+ * @returns {string}                                      The filename without given extension(s).
  */
-function _getFileName(filePath, ext=_get('extensions')) {
+function _getFileName(filePath, ext=config.get('extensions')) {
   return path.basename(filePath).replace(_getExtensionRegEx(ext), '');
 }
 
@@ -280,10 +274,10 @@ function _getFileName(filePath, ext=_get('extensions')) {
  * will then be able to match file paths, which have those extensions.
  *
  * @private
- * @param {Array|string} [ext=_get('extensions')]     The extension(s).
- * @returns {RegExp}                                  File path matcher.
+ * @param {Array|string} [ext=config.get('extensions')]     The extension(s).
+ * @returns {RegExp}                                        File path matcher.
  */
-function _getExtensionRegEx(ext=_get('extensions')) {
+function _getExtensionRegEx(ext=config.get('extensions')) {
   let _ext = '(?:' + makeArray(ext).join('|') + ')';
   return new RegExp(_ext + '$');
 }
@@ -297,7 +291,7 @@ function _getExtensionRegEx(ext=_get('extensions')) {
  * @returns {Array}
  */
 function _getFileTests(fileName, options={}) {
-  let extension =  makeArray(options.extension || _get('extensions'));
+  let extension =  makeArray(options.extension || config.get('extensions'));
   return uniq(
     [path.basename(fileName)].concat(
       extension.map(ext=>path.basename(fileName, ext)
@@ -327,12 +321,12 @@ function _canImport(fileName, callingFileName, options) {
  * Import an entire directory (excluding the file that does the import if it is in the same directory).
  *
  * @async
- * @param {string} dirPath                                        Directory to import.
- * @param {Object} [options]                                      Import options.
- * @param {Array|string} [options.extension=_get('extensions')]   Extension of files to import.
- * @param {Object} [options.imports={}]                           Object to import into.
- * @param {Function} [options.onload]                             Callback to fire on each successful import.
- * @param {boolean} [options.merge=false]                         Merge exported properties & methods together.
+ * @param {string} dirPath                                               Directory to import.
+ * @param {Object} [options]                                            Import options.
+ * @param {Array|string} [options.extension=config.get('extensions')]   Extension of files to import.
+ * @param {Object} [options.imports={}]                                 Object to import into.
+ * @param {Function} [options.onload]                                   Callback to fire on each successful import.
+ * @param {boolean} [options.merge=false]                               Merge exported properties & methods together.
  * @returns {Promise.<Object>}
  */
 async function _importDirectory(dirPath, options={}) {
@@ -360,7 +354,7 @@ function _importDirectoryOptionsParser(options={}) {
   options.onload = options.onload || options.callback;
   options.useSyncRequire = !!options.useSyncRequire;
   options.merge = !!options.merge;
-  options.extension = _get('extensions');
+  options.extension = config.get('extensions');
   if (options.callback) console.warn('The options.callback method is deprecated, please use options.onload() instead.');
 
   return options;
@@ -451,14 +445,14 @@ async function _tryModule(modulePath, defaultReturnValue, require) {
  */
 function getResolver(options={}) {
   const _options = Object.assign({
-    extensions: _get('extensions'),
-    moduleDirectory: options.moduleDirectory || options.modules || _get('moduleDirectory'),
+    extensions: config.get('extensions'),
+    moduleDirectory: options.moduleDirectory || options.modules || config.get('moduleDirectory'),
     preserveSymlinks: false
   }, options);
 
   return {
     resolve: (moduleId, dir, cb)=>{
-      const resolver = _get('resolver');
+      const resolver = config.get('resolver');
       if (cb) {
         return resolver(moduleId, Object.assign(_options, {basedir:dir || __dirname}), cb);
       } else {
@@ -482,7 +476,7 @@ function getResolver(options={}) {
       return  _options.extensions;
     },
     getState: ()=>Object.assign({}, _options),
-    isCoreModule: moduleId=>!!_get('resolver').isCore(moduleId)
+    isCoreModule: moduleId=>!!config.get('resolver').isCore(moduleId)
   }
 }
 
@@ -502,20 +496,8 @@ function requireAsync(...params) {
   return _requireX(userResolver, moduleName, callback, false);
 }
 
-function _set(key, value) {
-  config.set(key, value);
-}
-
-function _get(key) {
-  return config.get(key);
-}
-
-function _delete(key) {
-  config.delete(key);
-}
-
 function promiseLibraryWrap(func) {
-  if (_get('Promise')) return _get('Promise').resolve(func);
+  if (config.has('Promise')) return config.get('Promise').resolve(func);
   return func;
 }
 
@@ -527,9 +509,9 @@ requireAsync.getModule = (...params)=>{
 requireAsync.try = promiseLibraryWrap(tryModule);
 requireAsync.getResolver = promiseLibraryWrap(getResolver);
 requireAsync.importDirectory = promiseLibraryWrap(importDirectory);
-requireAsync.get = _get;
-requireAsync.set = _set;
-requireAsync.delete = _delete;
+requireAsync.get = config.get.bind(config);
+requireAsync.set = config.set.bind(config);
+requireAsync.delete = config.delete.bind(config);
 
 
 

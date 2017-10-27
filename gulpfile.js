@@ -29,7 +29,10 @@ function tree(root) {
 			} else if (stats.isFile() && xIsJsFile.test(_files[i])) {
 				try {
 					structure[_files[i]] = require(root + '/' + _files[i]);
-				} catch(err) {}
+				} catch(err) {
+					console.log('Could not load task in: ' + _files[i]);
+					console.error(err);
+				}
 			}
 		}
 	}
