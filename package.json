@@ -33,6 +33,8 @@
     "lodash.isboolean": "^3.0.3",
     "lodash.isfunction": "^3.0.8",
     "lodash.isstring": "^4.0.1",
+    "lodash.pick": "^4.4.0",
+    "lodash.pullall": "^4.2.0",
     "lodash.uniq": "^4.5.0",
     "require-like": "^0.1.2",
     "resolve": "^1.5.0",

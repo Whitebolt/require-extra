@@ -39,6 +39,23 @@ util.promisify = function promisify(func) {
   };
 };
 
+/**
+ * Get all the property names (including inherited) of the given object.
+ *
+ * @public
+ * @param {Object} obj		The object to get properties for.
+ * @returns {Set}			A set of all the property names.
+ */
+util.getAllPropertyNames = function getAllPropertyNames(obj) {
+  const all = new Set();
+
+  do {
+    Object.getOwnPropertyNames(obj).forEach(property=>all.add(property));
+  } while (obj = Object.getPrototypeOf(obj));
+
+  return all;
+};
+
 util.readDir = util.promisify(fs.readdir);
 util.readFile = util.promisify(fs.readFile);
 

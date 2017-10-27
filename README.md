@@ -124,7 +124,7 @@ myResolverClass = requireX.getResolver({
   // order matters. in this example index.js is prioritized over index.coffee 
   extensions: ['.js', '.coffee', '.eco'],
   // default : 'node_modules' - its 'node_modules' directory names, may be changed 
-  modules : 'other_modules'
+  moduleDirectory : 'other_modules'
 })
 ```
 
