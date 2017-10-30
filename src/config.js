@@ -34,8 +34,8 @@ class RequireExtraSettings extends Map {
     let value = super.get(key);
     if (getterOverrides.hasOwnProperty(key)) return super.set(key, getterOverrides[key](value));
     if ((key === 'resolver') && !value) {
-      const getResolver = require('./resolver');
-      value = getResolver();
+      const Resolver = require('./resolver');
+      value = new Resolver();
       this.set('resolver', value);
     }
     return value;

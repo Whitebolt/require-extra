@@ -42,6 +42,16 @@ class Resolver {
     return this.extensions;
   }
 
+  static addExtenstions(...ext) {
+    config.set('extensions', uniq([...config.get('extensions'), ...flattenDeep(ext)]));
+    return config.get('extensions');
+  }
+
+  static removeExtensions (...ext) {
+    config.set('extensions', without(config.get('extensions'), ...flattenDeep(ext)));
+    return config.get('extensions');
+  }
+
   get extensions() {
     return Private.get(this, 'extensions', Array);
   }
@@ -50,7 +60,6 @@ class Resolver {
     Private.set(this, 'extensions', makeArray(value));
     return true;
   }
-
   getState() {
     return pick(this, allowedOptions);
   }
@@ -58,19 +67,20 @@ class Resolver {
   isCoreModule(moduleId) {
     return !!config.get('resolve-module').isCore(moduleId);
   }
+
+  /**
+   * Generate a new resolver object following specific rules defined in the
+   * options parameter. If no options are supplied, return a default resolver.
+   *
+   * @public
+   * @param {Object} options    Options to pass to the resolver object
+   * @returns {Object}          The new resolver object or the current module
+   *                            resolver if no options supplied.
+   */
+  static getResolver(options) {
+    console.warn(`This method is deprecated, please use new Resolver(<options>) instead.`);
+    return new Resolver(options);
+  };
 }
 
-/**
- * Generate a new resolver object following specific rules defined in the
- * options parameter. If no options are supplied, return a default resolver.
- *
- * @public
- * @param {Object} options    Options to pass to the resolver object
- * @returns {Object}          The new resolver object or the current module
- *                            resolver if no options supplied.
- */
-function getResolver(options) {
-  return new Resolver(options);
-}
-
-module.exports = getResolver;
+module.exports = Resolver;

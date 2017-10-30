@@ -97,6 +97,22 @@ util.getAllPropertyNames = function getAllPropertyNames(obj) {
   return all;
 };
 
+util.promiseLibraryWrap = function promiseLibraryWrap(func, config) {
+  if (config.has('Promise')) return config.get('Promise').resolve(func);
+  return func;
+};
+
+util.deprecated = function deprecated(from, to, exported) {
+  exported[from] = (...params)=>{
+    console.warn(`Use of ${from} is deprecated, please use ${to}() instead, it is exactly the same.`);
+    return exported[to](...params);
+  };
+};
+
+util.reflect = function reflect(from, to, properties) {
+  properties.forEach(property=>to[property] = from[property].bind(from));
+};
+
 util.readDir = util.promisify(fs.readdir);
 util.readFile = util.promisify(fs.readFile);
 
