@@ -1,75 +1,70 @@
-var vm = require('vm')
-var isBuffer = Buffer.isBuffer
+'use strict';
 
-var requireLike = require('require-like')
+const vm = require('vm');
+const isBuffer = Buffer.isBuffer;
+const requireLike = require('require-like');
+const {isString, isObject, isBoolean} = require('./util');
 
-function merge (a, b) {
-  if (!a || !b) return a
-  var keys = Object.keys(b)
-  for (var k, i = 0, n = keys.length; i < n; i++) {
-    k = keys[i]
-    a[k] = b[k]
-  }
-  return a
-}
-
-// Return the exports/module.exports variable set in the content
-// content (String|VmScript): required
-module.exports = function (content, filename, scope, includeGlobals) {
-
-  if (typeof filename !== 'string') {
-    if (typeof filename === 'object') {
-      includeGlobals = scope
-      scope = filename
-      filename = null
-    } else if (typeof filename === 'boolean') {
-      includeGlobals = filename
-      scope = {}
-      filename = null
+function _createConfig(content, filename, scope, includeGlobals) {
+  const config = {content, filename, scope, includeGlobals};
+  if (!isString(filename)) {
+    if (isObject(filename)) {
+      Object.assign(config, {includeGlobals:scope, scope:filename, filename:null});
+    } else if (isBoolean(filename)) {
+      Object.assign(config, {includeGlobals:filename, scope:{}, filename:null});
     }
   }
 
-  // Expose standard Node globals
-  var sandbox = {}
-  var exports = {}
-  var _filename = filename || module.parent.filename;
+  config.content = isBuffer(config.content)?config.content.toString():config.content;
+  config.filename =  config.filename || module.parent.filename;
 
-  if (includeGlobals) {
-    merge(sandbox, global)
-    sandbox.require = requireLike(_filename)
-  }
-
-  if (typeof scope === 'object') {
-    merge(sandbox, scope)
-  }
-
-  sandbox.exports = exports
-  sandbox.module = {
-    exports: exports,
-    filename: _filename,
-    id: _filename,
-    parent: module.parent,
-    require: sandbox.require || requireLike(_filename)
-  }
-  sandbox.global = sandbox
-
-  var options = {
-    filename: filename,
-    displayErrors: false
-  }
-
-  if (isBuffer(content)) {
-    content = content.toString()
-  }
-
-  // Evalutate the content with the given scope
-  if (typeof content === 'string') {
-    var stringScript = content.replace(/^\#\!.*/, '')
-    var script = new vm.Script(stringScript, options)
-    script.runInNewContext(sandbox, options)
-  } else {
-    content.runInNewContext(sandbox, options)
-  }
-
-  return sandbox.module.exports
+  return config;
 }
+
+function _createSandbox(config) {
+  let exports = {};
+  const sandbox = {};
+
+  if (config.includeGlobals) Object.assign(sandbox, global, {require:requireLike(config.filename)});
+  if (isObject(config.scope)) Object.assign(sandbox, config.scope);
+
+  Object.assign(sandbox, {
+    exports, module: {
+      exports: exports,
+      filename: config.filename,
+      id: config.filename,
+      parent: module.parent,
+      require: sandbox.require || requireLike(config.filename)
+    },
+    global: sandbox
+  });
+
+  return sandbox;
+}
+
+function _createOptions(config) {
+  return {
+    filename:config.filename,
+    displayErrors:false
+  };
+}
+
+function _createScript(config, options) {
+  if (!isString(config.content)) return config.content;
+  const stringScript = config.content.replace(/^\#\!.*/, '');
+  return new vm.Script(stringScript, options);
+}
+
+function evaluate(content, filename, scope, includeGlobals) {
+  const config = _createConfig(content, filename, scope, includeGlobals);
+  const options = _createOptions(config);
+  const sandbox = _createSandbox(config);
+  const script = _createScript(config, options);
+
+  script.runInNewContext(sandbox, options);
+
+  return sandbox.module.exports;
+}
+
+
+module.exports = evaluate;
