@@ -4,10 +4,18 @@ const config = require('./config');
 const {uniq, flattenDeep, pick, promisify, makeArray, without, getCallingFileName} = require('./util');
 const Private = require("./Private");
 
+const _resolveLike = ['resolve', 'extensions', 'getState', 'isCoreModule', 'addExtenstions', 'removeExtensions'];
+Object.freeze(_resolveLike);
+
 const allowedOptions = [
   'basedir', 'package', 'extensions', 'readFile', 'isFile', 'packageFilter',
   'pathFilter', 'paths', 'moduleDirectory', 'preserveSymlinks'
 ];
+
+const otherOptions = [
+  'parent'
+];
+
 
 function _importOptions(instance, options={}) {
   const _options = Object.assign({
@@ -16,9 +24,9 @@ function _importOptions(instance, options={}) {
     preserveSymlinks: false
   }, options);
 
-  if (_options.modules) console.warn('The property options.modules is deprecated, please use options.moduleDirectory instead. This being used in ${getCallingFileName()}`');
+  if (_options.modules) console.warn(`The property options.modules is deprecated, please use options.moduleDirectory instead. This being used in ${getCallingFileName()}`);
 
-  Object.assign(instance, pick(_options, allowedOptions));
+  Object.assign(instance, pick(_options, allowedOptions), pick(_options, otherOptions));
 }
 
 class Resolver {
@@ -52,6 +60,10 @@ class Resolver {
     return config.get('extensions');
   }
 
+  static get resolveLike() {
+    return _resolveLike;
+  }
+
   get extensions() {
     return Private.get(this, 'extensions', Array);
   }
@@ -60,6 +72,7 @@ class Resolver {
     Private.set(this, 'extensions', makeArray(value));
     return true;
   }
+
   getState() {
     return pick(this, allowedOptions);
   }

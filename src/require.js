@@ -3,8 +3,9 @@
 const config = require('./config');
 const _eval = require('./eval');
 const requireLike = require('require-like');
+const Resolver = require('./resolver');
 
-const {isString, readFile, getCallingDir, promisify} = require('./util');
+const {isString, readFile, getCallingDir, promisify, getCallingFileName} = require('./util');
 
 
 /**
@@ -17,7 +18,13 @@ const {isString, readFile, getCallingDir, promisify} = require('./util');
  * @returns {Object}      The resolver object.
  */
 function _getResolve(obj) {
-  return (obj ? (obj.resolver || (obj.resolve?obj:config.get('resolver'))) : config.get('resolver'));
+  if (!obj) return config.get('resolver');
+  if (obj instanceof Resolver) return obj;
+  if (obj.resolver) return obj.resolver;
+  let pass = true;
+  Resolver.resolveLike.forEach(property=>{pass &= (property in obj);});
+  if (pass) return obj;
+  return new Resolver(obj);
 }
 
 /**
@@ -28,7 +35,7 @@ function _getResolve(obj) {
  * @returns {string}      The directory path.
  */
 function _getRoot(obj) {
-  return getCallingDir(((obj && obj.dir) ? obj.dir : undefined));
+  return getCallingDir(((obj && obj.basedir) ? obj.basedir : undefined));
 }
 
 /**
@@ -84,7 +91,7 @@ function _evalModuleText(modulePath, moduleText) {
  * @param {string} modulePath   The path of the evaluated module.
  * @returns {*}
  */
-async function _loadModule(modulePath) {
+async function _loadModule(modulePath, userResolver) {
   return _evalModuleText(modulePath, await _loadModuleText(modulePath));
 }
 
@@ -100,8 +107,8 @@ async function _loadModule(modulePath) {
  * @param {string} modulePath   The path of the evaluated module.
  * @returns {*}
  */
-async function _loadModuleSync(modulePath) {
-  const localRequire = requireLike(config.get('parent').filename);
+async function _loadModuleSync(modulePath, userResolver) {
+  const localRequire = requireLike(userResolver.parent || config.get('parent').filename);
   await promisify(setImmediate)();
   return localRequire(modulePath);
 }
@@ -118,7 +125,7 @@ async function _loadModuleSync(modulePath) {
  */
 async function _loader(userResolver, moduleName, useSyncResolve) {
   const modulePath = await resolveModulePath(userResolver, moduleName);
-  return (useSyncResolve?_loadModuleSync:_loadModule)(modulePath);
+  return (useSyncResolve?_loadModuleSync:_loadModule)(modulePath, userResolver);
 }
 
 /**
@@ -135,6 +142,12 @@ async function _loader(userResolver, moduleName, useSyncResolve) {
  * @returns {Promise.<*|undefined>}             Promise, resolved with the module(s) or undefined.
  */
 async function _requireX(userResolver, moduleName, callback, useSyncResolve=false) {
+  if (userResolver.dir) {
+    console.warn(`The property userResolver.dir is deprecated, please use userResolver.basedir instead. This being used in ${getCallingFileName()}`);
+  }
+
+  userResolver.basedir = userResolver.basedir || userResolver.dir;
+
   try {
     const modules = await (Array.isArray(moduleName) ?
         Promise.all(moduleName.map(moduleName=>_loader(userResolver, moduleName, useSyncResolve))) :
