@@ -1,5 +1,6 @@
 'use strict';
 
-require('./src/importSettings')('gulp');
-module.exports = require('./src/versionLoader')(__cwd + gulpSettings.build);
-//module.exports = require('./src');
+var settings = require('./src/importSettings')('gulp');
+var requireX = require('./src/versionLoader')(settings.cwd + settings.build);
+requireX.set('parent', module);
+module.exports = requireX;

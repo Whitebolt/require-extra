@@ -4,6 +4,7 @@ const vm = require('vm');
 const isBuffer = Buffer.isBuffer;
 const requireLike = require('require-like');
 const {isString, isObject, isBoolean} = require('./util');
+const settings = require('./config');
 
 function _createConfig(content, filename, scope, includeGlobals) {
   const config = {content, filename, scope, includeGlobals};
@@ -33,7 +34,7 @@ function _createSandbox(config) {
       exports: exports,
       filename: config.filename,
       id: config.filename,
-      parent: module.parent,
+      parent: settings.get('parent').parent || settings.get('parent'),
       require: sandbox.require || requireLike(config.filename)
     },
     global: sandbox

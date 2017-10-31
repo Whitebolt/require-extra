@@ -2,11 +2,15 @@
 
 // @note We are avoiding ES6 here.
 
+var path = require('path');
+
 function loadConfig(id, copyProps, defaultPropValues) {
+  var cwd = path.normalize(__dirname + '/../');
+
   function getPackageData(filename) {
     filename = filename || 'package.json';
     try {
-      return require(__cwd + './' + filename);
+      return require(cwd + './' + filename);
     } catch(err) {
       return {};
     }
@@ -32,16 +36,18 @@ function loadConfig(id, copyProps, defaultPropValues) {
     return obj;
   }
 
-  global.__cwd = process.cwd() + '/';
   var packageData = getPackageData();
   var local = getPackageData('local.json');
 
-  global[id+'Settings'] = assign(
+  var exported = assign(
     packageData[id],
     pick(packageData, copyProps, defaultPropValues),
     {nodeVersion: parseFloat(process.versions.node.split('.').slice(0, 2).join('.'))},
-    local
+    local,
+    {cwd: cwd}
   );
+
+  return exported;
 }
 
 module.exports = loadConfig;

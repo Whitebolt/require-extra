@@ -2,8 +2,10 @@
 
 const config = require('./config');
 const _eval = require('./eval');
+const requireLike = require('require-like');
 
 const {isString, readFile, getCallingDir, promisify} = require('./util');
+
 
 /**
  * Get the resolver object from a given object.  Assumes it has received
@@ -98,8 +100,10 @@ async function _loadModule(modulePath) {
  * @param {string} modulePath   The path of the evaluated module.
  * @returns {*}
  */
-function _loadModuleSync(modulePath) {
-  return promisify(setImmediate)().then(()=>require(modulePath));
+async function _loadModuleSync(modulePath) {
+  const localRequire = requireLike(config.get('parent').filename);
+  await promisify(setImmediate)();
+  return localRequire(modulePath);
 }
 
 /**

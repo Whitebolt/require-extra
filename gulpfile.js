@@ -4,8 +4,9 @@
 // @note We are avoiding ES6 here.
 
 const xIsJsFile = /\.js$/i;
-require('./src/importSettings')('gulp', ['babel']);
-
+var settings = require('./src/importSettings')('gulp', ['babel']);
+global.gulpSettings = settings;
+global.__cwd = settings.cwd;
 const fs = require('fs');
 const gulp = require('gulp');
 const tasks = createTasks('./tasks');
