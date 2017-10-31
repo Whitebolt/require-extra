@@ -12,27 +12,27 @@ const {
  * Get a list of files in the directory.
  *
  * @private
- * @param {string} dirPath                          Directory path to scan.
- * @param {string} [ext=config.get('extensions')]   File extension filter to use.
- * @returns {Promise.<string[]>}                    Promise resolving to array of files.
+ * @param {string} dirPath          Directory path to scan.
+ * @param {Object} [options]        Import options object.
+ * @returns {Promise.<string[]>}    Promise resolving to array of files.
  */
-async function _filesInDirectory(dirPath, ext=config.get('extensions')) {
-  dirPath = getCallingDir(dirPath);
-  let xExt = _getExtensionRegEx(ext);
+async function _filesInDirectory(dirPath, options) {
+  const resolvedDirPath = path.resolve(options.basedir || getCallingDir(), dirPath);
+  let xExt = _getExtensionRegEx(options.extension || config.get('extensions'));
 
   try {
-    return (await readDir(dirPath)).filter(
+    return (await readDir(resolvedDirPath)).filter(
       fileName=>xExt.test(fileName)
     ).map(
-      fileName=>path.resolve(dirPath, fileName)
+      fileName=>path.resolve(resolvedDirPath, fileName)
     );
   } catch (err) {
     return [];
   }
 }
 
-async function filesInDirectories(dirPaths, ext=config.get('extensions')) {
-  let files = await Promise.all(dirPaths.map(dirPath=>_filesInDirectory(dirPath, ext)));
+async function filesInDirectories(dirPaths, options) {
+  let files = await Promise.all(dirPaths.map(dirPath=>_filesInDirectory(dirPath, options)));
   return flattenDeep(files);
 }
 
@@ -110,16 +110,16 @@ function _canImport(fileName, callingFileName, options) {
  * @returns {Promise.<Object>}
  */
 async function _importDirectory(dirPath, options={}) {
-  _importDirectoryOptionsParser(options);
-  const modDefs = await _importDirectoryModules(dirPath, options);
+  const _options = _importDirectoryOptionsParser(options);
+  const modDefs = await _importDirectoryModules(dirPath, _options);
 
   modDefs.forEach(([fileName, module])=>{
-    if (options.onload) options.onload(fileName, module);
-    if ((options.merge === true) && (!isFunction(module))) return Object.assign(options.imports, module);
-    options.imports[_getFileName(fileName, options.extension)] = module;
+    if (_options.onload) _options.onload(fileName, module);
+    if ((_options.merge === true) && (!isFunction(module))) return Object.assign(_options.imports, module);
+    _options.imports[_getFileName(fileName, _options.extension)] = module;
   });
 
-  return options.imports;
+  return _options.imports;
 }
 
 /**
@@ -130,14 +130,18 @@ async function _importDirectory(dirPath, options={}) {
  * @returns {Object}
  */
 function _importDirectoryOptionsParser(options={}) {
-  options.imports = options.imports || {};
-  options.onload = options.onload || options.callback;
-  options.useSyncRequire = !!options.useSyncRequire;
-  options.merge = !!options.merge;
-  options.extension = config.get('extensions');
-  if (options.callback) console.warn('The options.callback method is deprecated, please use options.onload() instead.');
+  const _options = Object.assign({
+    imports: {},
+    onload: options.callback,
+    extension: config.get('extensions')
+  }, options, {
+    useSyncRequire: !!options.useSyncRequire,
+    merge: !!options.merge
+  });
 
-  return options;
+  if (options.callback) console.warn(`The options.callback method is deprecated, please use options.onload() instead. This being used in ${getCallingFileName()}`);
+
+  return _options;
 }
 
 /**
@@ -153,7 +157,7 @@ function _importDirectoryOptionsParser(options={}) {
 async function _importDirectoryModules(dirPath, options) {
   const caller = getCallingFileName();
   const require = (options.useSyncRequire ? requireSync : requireAsync);
-  const files = await filesInDirectories(makeArray(dirPath), options.extension);
+  const files = await filesInDirectories(makeArray(dirPath), options);
   const modDefs = await Promise.all(files.map(async (fileName)=> {
     if (_canImport(fileName, caller, options)) return [fileName, await require(fileName)];
   }));

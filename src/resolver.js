@@ -1,7 +1,7 @@
 'use strict';
 
 const config = require('./config');
-const {uniq, flattenDeep, pick, promisify, makeArray, without} = require('./util');
+const {uniq, flattenDeep, pick, promisify, makeArray, without, getCallingFileName} = require('./util');
 const Private = require("./Private");
 
 const allowedOptions = [
@@ -16,7 +16,7 @@ function _importOptions(instance, options={}) {
     preserveSymlinks: false
   }, options);
 
-  if (_options.modules) console.warn('The property options.modules is deprecated, please use options.moduleDirectory instead.');
+  if (_options.modules) console.warn('The property options.modules is deprecated, please use options.moduleDirectory instead. This being used in ${getCallingFileName()}`');
 
   Object.assign(instance, pick(_options, allowedOptions));
 }
@@ -78,7 +78,7 @@ class Resolver {
    *                            resolver if no options supplied.
    */
   static getResolver(options) {
-    console.warn(`This method is deprecated, please use new Resolver(<options>) instead.`);
+    console.warn(`This method is deprecated, please use new Resolver(<options>) instead. This being used in ${getCallingFileName()}`);
     return new Resolver(options);
   };
 }

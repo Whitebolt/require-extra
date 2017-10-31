@@ -104,7 +104,7 @@ util.promiseLibraryWrap = function promiseLibraryWrap(func, config) {
 
 util.deprecated = function deprecated(from, to, exported) {
   exported[from] = (...params)=>{
-    console.warn(`Use of ${from} is deprecated, please use ${to}() instead, it is exactly the same.`);
+    console.warn(`Use of ${from} is deprecated, please use ${to}() instead, it is exactly the same. This being used in ${util.getCallingFileName()}`);
     return exported[to](...params);
   };
 };

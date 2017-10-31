@@ -601,11 +601,11 @@ browser-stdout@1.3.0:
   resolved "https://registry.yarnpkg.com/browser-stdout/-/browser-stdout-1.3.0.tgz#f351d32969d32fa5d7a5567154263d928ae3bd1f"
 
 browserslist@^2.1.2:
-  version "2.5.1"
-  resolved "https://registry.yarnpkg.com/browserslist/-/browserslist-2.5.1.tgz#68e4bc536bbcc6086d62843a2ffccea8396821c6"
+  version "2.6.1"
+  resolved "https://registry.yarnpkg.com/browserslist/-/browserslist-2.6.1.tgz#cc65a05ad6131ebda26f076f2822ba1bc826376b"
   dependencies:
-    caniuse-lite "^1.0.30000744"
-    electron-to-chromium "^1.3.24"
+    caniuse-lite "^1.0.30000755"
+    electron-to-chromium "^1.3.27"
 
 cache-point@^0.4.1:
   version "0.4.1"
@@ -619,13 +619,9 @@ callsite@^1.0.0:
   version "1.0.0"
   resolved "https://registry.yarnpkg.com/callsite/-/callsite-1.0.0.tgz#280398e5d664bd74038b6f0905153e6e8af1bc20"
 
-callsites@^2.0.0:
-  version "2.0.0"
-  resolved "https://registry.yarnpkg.com/callsites/-/callsites-2.0.0.tgz#06eb84f00eea413da86affefacbffb36093b3c50"
-
-caniuse-lite@^1.0.30000744:
-  version "1.0.30000752"
-  resolved "https://registry.yarnpkg.com/caniuse-lite/-/caniuse-lite-1.0.30000752.tgz#0a79df520669d92ddc7f57406eed935948263130"
+caniuse-lite@^1.0.30000755:
+  version "1.0.30000756"
+  resolved "https://registry.yarnpkg.com/caniuse-lite/-/caniuse-lite-1.0.30000756.tgz#3da701c1521b9fab87004c6de7c97fa47dbeaad2"
 
 catharsis@~0.8.9:
   version "0.8.9"
@@ -816,7 +812,7 @@ duplexer2@0.0.2:
   dependencies:
     readable-stream "~1.1.9"
 
-electron-to-chromium@^1.3.24:
+electron-to-chromium@^1.3.27:
   version "1.3.27"
   resolved "https://registry.yarnpkg.com/electron-to-chromium/-/electron-to-chromium-1.3.27.tgz#78ecb8a399066187bb374eede35d9c70565a803d"
 
@@ -1132,8 +1128,8 @@ gulp-babel@^7.0.0:
     vinyl-sourcemaps-apply "^0.2.0"
 
 gulp-commonjs-browser-wrap@^0.6.5:
-  version "0.6.5"
-  resolved "https://registry.yarnpkg.com/gulp-commonjs-browser-wrap/-/gulp-commonjs-browser-wrap-0.6.5.tgz#d5e10a833cb1aeead60899cf5bfd51277fc6cb16"
+  version "0.6.6"
+  resolved "https://registry.yarnpkg.com/gulp-commonjs-browser-wrap/-/gulp-commonjs-browser-wrap-0.6.6.tgz#dd7f3eebf63dcd1624e3c68d6ffe7b055109940d"
   dependencies:
     lodash-provider "^1.4.0"
     lodash.castarray "^4.4.0"
@@ -2303,8 +2299,8 @@ v8flags@^2.0.2:
     user-home "^1.1.1"
 
 vinyl-commonjs-dependencies@^0.7.6:
-  version "0.7.6"
-  resolved "https://registry.yarnpkg.com/vinyl-commonjs-dependencies/-/vinyl-commonjs-dependencies-0.7.6.tgz#5d2a78cf2790c85fc6cfbbc07a10e52c3eab3ab9"
+  version "0.7.7"
+  resolved "https://registry.yarnpkg.com/vinyl-commonjs-dependencies/-/vinyl-commonjs-dependencies-0.7.7.tgz#256e4e1b45309346c2f63bc69f4707c7b6ac75bd"
   dependencies:
     async-resolve "^0.3.5"
     babel-polyfill "^6.26.0"

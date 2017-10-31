@@ -105,7 +105,7 @@ var requireX = require('require-extra');
 requireX({
   dir: '/home/me/.npm',
   resolver: myResolverClass
-}'express').then(function(express){
+}, 'express').then(function(express){
   console.log('Module express has loaded');
 }, function(error){
   console.error('Module express, failed to load', error);
