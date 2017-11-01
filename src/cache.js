@@ -21,6 +21,19 @@ class Cache {
   has(property) {
     return (property in globalCache);
   }
+
+  delete(property) {
+    if (this.has(property)) {
+      delete globalCache[property];
+      return true;
+    }
+    return false;
+  }
+
+  clear() {
+    Object.keys(globalCache).forEach(property=>this.delete(property));
+    return true;
+  }
 }
 
 module.exports = new Cache();

@@ -29,7 +29,8 @@ function wrapSettings(base='') {
   return {
     type:'moduleWrap',
     main:__cwd + base + gulpSettings.main,
-    includeGlobal:true
+    includeGlobal:true,
+    debug:true
   };
 }
 
@@ -43,7 +44,7 @@ function fn(gulp, done) {
     const outputFilename = target + '.js';
 
     vcjd.src([__cwd + gulpSettings.main], vcJdOptions)
-      .pipe(commonjsBrowserWrap())
+      .pipe(commonjsBrowserWrap({debug:true}))
       .pipe(concat(outputFilename))
       .pipe(babel(babelSettings))
       .pipe(commonjsBrowserWrap(wrapSettings()))
@@ -53,7 +54,7 @@ function fn(gulp, done) {
           __cwd + gulpSettings.tests + '/' + gulpSettings.main,
           './src/importSettings'
         ], vcJdOptions)
-          .pipe(commonjsBrowserWrap())
+          .pipe(commonjsBrowserWrap({debug:true}))
           .pipe(concat(outputFilename))
           .pipe(babel(babelSettings))
           .pipe(commonjsBrowserWrap(wrapSettings(gulpSettings.tests + '/')))

@@ -7,6 +7,7 @@ const requireLike = require('require-like');
 const {isString, isObject} = require('./util');
 const settings = require('./config');
 const semvar = require('semver');
+const cache = require('./cache');
 
 const proxiedGlobal = (semvar.gt(process.versions.node, '8.3.0'));
 
@@ -37,6 +38,15 @@ function createProxy(sandbox) {
   });
 }
 
+function _getParent(config) {
+  if (config.hasOwnProperty('parent')) {
+    if (!isString(config.parent)) return config.parent;
+    if (cache.has(config.parent)) return cache.get(config.parent);
+  }
+
+  return settings.get('parent').parent || settings.get('parent');
+}
+
 function _createSandbox(config) {
   let exports = {};
   const sandbox = {};
@@ -49,7 +59,7 @@ function _createSandbox(config) {
       exports: exports,
       filename: config.filename,
       id: config.filename,
-      parent: settings.get('parent').parent || settings.get('parent')
+      parent: _getParent(config)
     },
     __filename: config.filename,
     __dirname: path.dirname(config.filename)

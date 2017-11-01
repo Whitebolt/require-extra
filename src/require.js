@@ -7,7 +7,7 @@ const Resolver = require('./resolver');
 const cache = require('./cache');
 const path = require('path');
 
-const {isString, readFile, getCallingDir, promisify} = require('./util');
+const {isString, readFile, getCallingDir, promisify, pick} = require('./util');
 
 
 /**
@@ -73,7 +73,8 @@ function _loadModuleText(fileName) {
  * @param {string} content   The text content of the module.
  * @returns {*}
  */
-function _evalModuleText(filename, content) {
+function _evalModuleText(filename, content, userResolver) {
+  if (content === undefined) return;
   if (/\.json$/.test(filename)) {
     return {
       exports: JSON.parse(content),
@@ -81,11 +82,10 @@ function _evalModuleText(filename, content) {
       __dirname: path.dirname(filename)
     }
   } else {
-    return (
-      (content !== undefined)?
-        _eval({content, filename, includeGlobals:true}):
-        undefined
-    );
+    return _eval(Object.assign(
+      {content, filename, includeGlobals:true},
+      pick(userResolver, ['parent'])
+    ));
   }
 }
 
@@ -94,15 +94,15 @@ function _evalModuleText(filename, content) {
  * on failure.
  *
  * @private
- * @param {string} modulePath   The path of the evaluated module.
+ * @param {string} filename   The path of the evaluated module.
  * @returns {*}
  */
-async function _loadModule(modulePath, userResolver) {
-  if (!cache.has(modulePath)) {
-    const exports = _evalModuleText(modulePath, await _loadModuleText(modulePath));
-    cache.set(modulePath, exports);
+async function _loadModule(filename, userResolver) {
+  if (!cache.has(filename)) {
+    const exports = _evalModuleText(filename, await _loadModuleText(filename), userResolver);
+    cache.set(filename, exports);
   }
-  return cache.get(modulePath).exports;
+  return cache.get(filename).exports;
 }
 
 /**
