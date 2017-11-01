@@ -4,27 +4,24 @@ const vm = require('vm');
 const path = require('path');
 const isBuffer = Buffer.isBuffer;
 const requireLike = require('require-like');
-const {isString, isObject, isBoolean} = require('./util');
+const {isString, isObject} = require('./util');
 const settings = require('./config');
 const semvar = require('semver');
 
-const proxiedGlobal = ((semvar.satisfies(process.versions.node + '>=8.3.0')) ? true : false);
+const proxiedGlobal = (semvar.gt(process.versions.node, '8.3.0'));
 
 
-function _createConfig(content, filename, scope, includeGlobals) {
-  const config = {content, filename, scope, includeGlobals};
-  if (!isString(filename)) {
-    if (isObject(filename)) {
-      Object.assign(config, {includeGlobals:scope, scope:filename, filename:null});
-    } else if (isBoolean(filename)) {
-      Object.assign(config, {includeGlobals:filename, scope:{}, filename:null});
-    }
-  }
+function _parseConfig(config) {
+  const _config = Object.assign({
+    filename:module.parent.filename,
+    scope:{},
+    includeGlobals:false,
+    proxyGlobal:true
+  }, config);
 
   config.content = isBuffer(config.content)?config.content.toString():config.content;
-  config.filename =  config.filename || module.parent.filename;
 
-  return config;
+  return _config;
 }
 
 function createProxy(sandbox) {
@@ -44,7 +41,7 @@ function _createSandbox(config) {
   let exports = {};
   const sandbox = {};
 
-  if (config.includeGlobals && !proxiedGlobal) Object.assign(sandbox, global);
+  if (config.includeGlobals && (!proxiedGlobal || !config.proxyGlobal)) Object.assign(sandbox, global);
   if (isObject(config.scope)) Object.assign(sandbox, config.scope);
 
   Object.assign(sandbox, {
@@ -59,7 +56,7 @@ function _createSandbox(config) {
   });
   sandbox.require = sandbox.module.require = requireLike(config.filename);
 
-  return proxiedGlobal?createProxy(sandbox):sandbox;
+  return ((proxiedGlobal && config.proxyGlobal)?createProxy(sandbox):sandbox);
 }
 
 function _createOptions(config) {
@@ -75,11 +72,11 @@ function _createScript(config, options) {
   return new vm.Script(stringScript, options);
 }
 
-function evaluate(content, filename, scope, includeGlobals) {
-  const config = _createConfig(content, filename, scope, includeGlobals);
-  const options = _createOptions(config);
-  const sandbox = _createSandbox(config);
-  const script = _createScript(config, options);
+function evaluate(config) {
+  const _config = _parseConfig(config);
+  const options = _createOptions(_config);
+  const sandbox = _createSandbox(_config);
+  const script = _createScript(_config, options);
 
   script.runInNewContext(sandbox, options);
 

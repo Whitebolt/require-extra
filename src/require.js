@@ -69,21 +69,21 @@ function _loadModuleText(fileName) {
  * Evaluate module text in similar fashion to require evaluations.
  *
  * @private
- * @param {string} modulePath   The path of the evaluated module.
- * @param {string} moduleText   The text content of the module.
+ * @param {string} filename   The path of the evaluated module.
+ * @param {string} content   The text content of the module.
  * @returns {*}
  */
-function _evalModuleText(modulePath, moduleText) {
-  if (/\.json$/.test(modulePath)) {
+function _evalModuleText(filename, content) {
+  if (/\.json$/.test(filename)) {
     return {
-      exports: JSON.parse(moduleText),
-      __filename: modulePath,
-      __dirname: path.dirname(modulePath)
+      exports: JSON.parse(content),
+      __filename: filename,
+      __dirname: path.dirname(filename)
     }
   } else {
     return (
-      (moduleText !== undefined)?
-        _eval(moduleText, modulePath, {}, true):
+      (content !== undefined)?
+        _eval({content, filename, includeGlobals:true}):
         undefined
     );
   }
