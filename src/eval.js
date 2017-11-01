@@ -6,6 +6,10 @@ const isBuffer = Buffer.isBuffer;
 const requireLike = require('require-like');
 const {isString, isObject, isBoolean} = require('./util');
 const settings = require('./config');
+const semvar = require('semver');
+
+const proxiedGlobal = ((semvar.satisfies(process.versions.node + '>=8.3.0')) ? true : false);
+
 
 function _createConfig(content, filename, scope, includeGlobals) {
   const config = {content, filename, scope, includeGlobals};
@@ -40,7 +44,7 @@ function _createSandbox(config) {
   let exports = {};
   const sandbox = {};
 
-  if (config.includeGlobals) Object.assign(sandbox, global, {require:requireLike(config.filename)});
+  if (config.includeGlobals && !proxiedGlobal) Object.assign(sandbox, global);
   if (isObject(config.scope)) Object.assign(sandbox, config.scope);
 
   Object.assign(sandbox, {
@@ -48,14 +52,14 @@ function _createSandbox(config) {
       exports: exports,
       filename: config.filename,
       id: config.filename,
-      parent: settings.get('parent').parent || settings.get('parent'),
-      require: sandbox.require || requireLike(config.filename)
+      parent: settings.get('parent').parent || settings.get('parent')
     },
     __filename: config.filename,
     __dirname: path.dirname(config.filename)
   });
+  sandbox.require = sandbox.module.require = requireLike(config.filename);
 
-  return createProxy(sandbox);
+  return proxiedGlobal?createProxy(sandbox):sandbox;
 }
 
 function _createOptions(config) {
