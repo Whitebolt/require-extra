@@ -5,6 +5,7 @@ const _eval = require('./eval');
 const requireLike = require('require-like');
 const Resolver = require('./resolver');
 const cache = require('./cache');
+const path = require('path');
 
 const {isString, readFile, getCallingDir, promisify} = require('./util');
 
@@ -74,7 +75,11 @@ function _loadModuleText(fileName) {
  */
 function _evalModuleText(modulePath, moduleText) {
   if (/\.json$/.test(modulePath)) {
-    return JSON.parse(moduleText);
+    return {
+      exports: JSON.parse(moduleText),
+      __filename: modulePath,
+      __dirname: path.dirname(modulePath)
+    }
   } else {
     return (
       (moduleText !== undefined)?
