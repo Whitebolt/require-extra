@@ -17,7 +17,8 @@ const {
  * @returns {Promise.<string[]>}    Promise resolving to array of files.
  */
 async function _filesInDirectory(dirPath, options) {
-  const resolvedDirPath = path.resolve(options.basedir || getCallingDir(), dirPath);
+  const basedir = options.basedir || getCallingDir();
+  const resolvedDirPath = basedir?path.resolve(basedir, dirPath):dirPath;
   let xExt = _getExtensionRegEx(options.extension || config.get('extensions'));
 
   try {
@@ -90,7 +91,7 @@ function _getFileTests(fileName, options={}) {
  * @returns {boolean}
  */
 function _canImport(fileName, callingFileName, options) {
-  if (fileName === callingFileName) return false;
+  if (callingFileName && (fileName === callingFileName)) return false;
   let _fileName = _getFileTests(fileName, options);
   if (options.includes) return (intersection(options.includes, _fileName).length > 0);
   if (options.excludes) return (intersection(options.includes, _fileName).length === 0);
@@ -159,7 +160,7 @@ async function _importDirectoryModules(dirPath, options) {
   const require = (options.useSyncRequire ? requireSync : requireAsync);
   const files = await filesInDirectories(makeArray(dirPath), options);
   const modDefs = await Promise.all(files.map(async (fileName)=> {
-    if (_canImport(fileName, caller, options)) return [fileName, await require(fileName)];
+    if (_canImport(fileName, caller, options)) return [fileName, await require(options, fileName)];
   }));
 
   return modDefs.filter(modDef=>modDef);

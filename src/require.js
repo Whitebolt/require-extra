@@ -5,7 +5,7 @@ const _eval = require('./eval');
 const requireLike = require('require-like');
 const Resolver = require('./resolver');
 
-const {isString, readFile, getCallingDir, promisify, getCallingFileName} = require('./util');
+const {isString, readFile, getCallingDir, promisify} = require('./util');
 
 
 /**
@@ -180,7 +180,7 @@ function requireSync(userResolver, moduleName, callback) {
   if(isString(userResolver) || Array.isArray(userResolver)) {
     [callback, moduleName, userResolver] = [moduleName, userResolver, config.get('resolver')];
   }
-  return _requireX(userResolver, moduleName, callback, true);
+  return _requireX(_getResolve(userResolver), moduleName, callback, true);
 }
 
 /**
@@ -197,7 +197,7 @@ function requireSync(userResolver, moduleName, callback) {
 function requireAsync(...params) {
   const userResolver = ((isString(params[0]) || Array.isArray(params[0])) ? config.get('resolver') : params.shift());
   const [moduleName, callback] = params;
-  return _requireX(userResolver, moduleName, callback, false);
+  return _requireX(_getResolve(userResolver), moduleName, callback, false);
 }
 
 module.exports = {
