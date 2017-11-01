@@ -4,6 +4,7 @@ const config = require('./config');
 const _eval = require('./eval');
 const requireLike = require('require-like');
 const Resolver = require('./resolver');
+const cache = require('./cache');
 
 const {isString, readFile, getCallingDir, promisify} = require('./util');
 
@@ -92,7 +93,11 @@ function _evalModuleText(modulePath, moduleText) {
  * @returns {*}
  */
 async function _loadModule(modulePath, userResolver) {
-  return _evalModuleText(modulePath, await _loadModuleText(modulePath));
+  if (!cache.has(modulePath)) {
+    const exports = _evalModuleText(modulePath, await _loadModuleText(modulePath));
+    cache.set(modulePath, exports);
+  }
+  return cache.get(modulePath).exports;
 }
 
 /**

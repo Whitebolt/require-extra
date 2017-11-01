@@ -1,6 +1,7 @@
 'use strict';
 
 const vm = require('vm');
+const path = require('path');
 const isBuffer = Buffer.isBuffer;
 const requireLike = require('require-like');
 const {isString, isObject, isBoolean} = require('./util');
@@ -22,6 +23,19 @@ function _createConfig(content, filename, scope, includeGlobals) {
   return config;
 }
 
+function createProxy(sandbox) {
+  return new Proxy(sandbox, {
+    get: function(target, property, receiver) {
+      if (property === 'global') return global;
+      if (property in target) return Reflect.get(target, property, receiver);
+      return Reflect.get(global, property, receiver);
+    },
+    has: function(target, property) {
+      return Reflect.has(target, property) || Reflect.has(global, property);
+    }
+  });
+}
+
 function _createSandbox(config) {
   let exports = {};
   const sandbox = {};
@@ -37,10 +51,11 @@ function _createSandbox(config) {
       parent: settings.get('parent').parent || settings.get('parent'),
       require: sandbox.require || requireLike(config.filename)
     },
-    global: sandbox
+    __filename: config.filename,
+    __dirname: path.dirname(config.filename)
   });
 
-  return sandbox;
+  return createProxy(sandbox);
 }
 
 function _createOptions(config) {
@@ -64,7 +79,7 @@ function evaluate(content, filename, scope, includeGlobals) {
 
   script.runInNewContext(sandbox, options);
 
-  return sandbox.module.exports;
+  return sandbox.module;
 }
 
 
