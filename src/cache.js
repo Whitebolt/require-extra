@@ -30,9 +30,17 @@ class Cache {
     return false;
   }
 
+  get size() {
+    return Object.keys(globalCache).length;
+  }
+
   clear() {
     Object.keys(globalCache).forEach(property=>this.delete(property));
     return true;
+  }
+
+  get source() {
+    return globalCache;
   }
 }
 

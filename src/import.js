@@ -160,7 +160,16 @@ async function _importDirectoryModules(dirPath, options) {
   const require = (options.useSyncRequire ? requireSync : requireAsync);
   const files = await filesInDirectories(makeArray(dirPath), options);
   const modDefs = await Promise.all(files.map(async (fileName)=> {
-    if (_canImport(fileName, caller, options)) return [fileName, await require(options, fileName)];
+    if (_canImport(fileName, caller, options)) {
+      //console.log('Importing: ', fileName);
+      //try {
+        return [fileName, await require(options, fileName)];
+      //} catch(err) {
+        //return [fileName, {}];
+      //}
+    } else {
+      //console.log('Rejecting import: ', fileName);
+    }
   }));
 
   return modDefs.filter(modDef=>modDef);

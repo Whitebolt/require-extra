@@ -7,7 +7,7 @@ const Resolver = require('./resolver');
 const cache = require('./cache');
 const path = require('path');
 
-const {isString, readFile, getCallingDir, promisify, pick} = require('./util');
+const {isString, readFile, readFileSync, getCallingDir, promisify, pick} = require('./util');
 
 
 /**
@@ -37,7 +37,7 @@ function _getResolve(obj) {
  * @returns {string}      The directory path.
  */
 function _getRoot(obj) {
-  return getCallingDir(((obj && obj.basedir) ? obj.basedir : undefined));
+  return (getCallingDir(((obj && obj.basedir) ? obj.basedir : undefined)) || (obj?obj.basedir:undefined));
 }
 
 /**
@@ -55,14 +55,29 @@ function resolveModulePath(userResolver, moduleName) {
 }
 
 /**
+ * Resolve a module path starting from current directory via returned promise.
+ *
+ * @public
+ * @param {Object} [userResolver=config.get('resolver')]    User-created resolver function.
+ * @param {string} moduleName                               Module name or path (same format as supplied to require()).
+ * @returns {Promise.<string>}
+ */
+function resolveModulePathSync(userResolver, moduleName) {
+  [moduleName, userResolver] = [moduleName || userResolver, userResolver || config.get('resolver')];
+  let dir = _getRoot(userResolver);
+  return _getResolve(userResolver).resolveSync(moduleName, dir);
+}
+
+/**
  * Read text from a file and handle any errors.
  *
  * @private
  * @param {string} fileName
- * @returns {Promise.<string>}
+ * @param {boolean} [sync=false]
+ * @returns {Promise.<string>|string}
  */
-function _loadModuleText(fileName) {
-  return readFile(fileName, 'utf8');
+function _loadModuleText(fileName, sync=false) {
+  return sync?readFileSync(fileName, 'utf-8'):readFile(fileName, 'utf8');
 }
 
 /**
@@ -83,7 +98,7 @@ function _evalModuleText(filename, content, userResolver) {
     }
   } else {
     return _eval(Object.assign(
-      {content, filename, includeGlobals:true},
+      {content, filename, includeGlobals:true, syncRequire, resolveModulePath},
       pick(userResolver, ['parent'])
     ));
   }
@@ -95,12 +110,27 @@ function _evalModuleText(filename, content, userResolver) {
  *
  * @private
  * @param {string} filename   The path of the evaluated module.
- * @returns {*}
+ * @returns {Promise.<*>}
  */
 async function _loadModule(filename, userResolver) {
   if (!cache.has(filename)) {
-    const exports = _evalModuleText(filename, await _loadModuleText(filename), userResolver);
-    cache.set(filename, exports);
+    cache.set(filename, _evalModuleText(filename, await _loadModuleText(filename), userResolver));
+  }
+  return cache.get(filename).exports;
+}
+
+/**
+ * Load and evaluate a module returning undefined to promise resolve
+ * on failure.
+ *
+ * @private
+ * @param {string} filename   The path of the evaluated module.
+ * @returns {*}
+ */
+function _loadModuleSync(filename, userResolver) {
+  if (!cache.has(filename)) {
+    //console.log('setting cache', filename, cache.size);
+    cache.set(filename, _evalModuleText(filename, _loadModuleText(filename, true), userResolver));
   }
   return cache.get(filename).exports;
 }
@@ -117,7 +147,7 @@ async function _loadModule(filename, userResolver) {
  * @param {string} modulePath   The path of the evaluated module.
  * @returns {*}
  */
-async function _loadModuleSync(modulePath, userResolver) {
+async function _loadModuleSyncAsync(modulePath, userResolver) {
   const localRequire = requireLike(userResolver.parent || config.get('parent').filename);
   await promisify(setImmediate)();
   return localRequire(modulePath);
@@ -135,7 +165,7 @@ async function _loadModuleSync(modulePath, userResolver) {
  */
 async function _loader(userResolver, moduleName, useSyncResolve) {
   const modulePath = await resolveModulePath(userResolver, moduleName);
-  return (useSyncResolve?_loadModuleSync:_loadModule)(modulePath, userResolver);
+  return (useSyncResolve?_loadModuleSyncAsync:_loadModule)(modulePath, userResolver);
 }
 
 /**
@@ -187,10 +217,7 @@ async function _requireX(userResolver, moduleName, callback, useSyncResolve=fals
  * @returns {Promise.<*>}                                     Promise, resolved with the module(s) or undefined.
  */
 function requireSync(userResolver, moduleName, callback) {
-  if(isString(userResolver) || Array.isArray(userResolver)) {
-    [callback, moduleName, userResolver] = [moduleName, userResolver, config.get('resolver')];
-  }
-  return _requireX(_getResolve(userResolver), moduleName, callback, true);
+  return _requireX(..._parseRequireParams([userResolver, moduleName, callback], true));
 }
 
 /**
@@ -204,12 +231,33 @@ function requireSync(userResolver, moduleName, callback) {
  * @param {function} [callback]                               Node-style callback to use instead of (or as well as) returned promise.
  * @returns {Promise.<*>}                                     Promise, resolved with the module(s) or undefined.
  */
-function requireAsync(...params) {
-  const userResolver = ((isString(params[0]) || Array.isArray(params[0])) ? config.get('resolver') : params.shift());
-  const [moduleName, callback] = params;
-  return _requireX(_getResolve(userResolver), moduleName, callback, false);
+function requireAsync(userResolver, moduleName, callback) {
+  return _requireX(..._parseRequireParams([userResolver, moduleName, callback]));
+}
+
+function _parseRequireParams([userResolver, moduleName, callback], useSyncResolve=false) {
+  if(isString(userResolver) || Array.isArray(userResolver)) {
+    return [config.get('resolver'), userResolver, moduleName, useSyncResolve];
+  }else {
+    return [_getResolve(userResolver), moduleName, callback, useSyncResolve];
+  }
+}
+
+function syncRequire(...params) {
+  const [userResolver, moduleName] = _parseRequireParams(params);
+
+  if (userResolver.isCoreModule(moduleName)) {
+    if (!cache.has(moduleName)) cache.set(moduleName, __require(moduleName));
+    //if (moduleName === 'util') console.log('Core', moduleName, cache.get(moduleName));
+    return cache.get(moduleName);
+  }
+
+  userResolver.basedir = userResolver.basedir || userResolver.dir;
+  const filename = resolveModulePathSync(userResolver, moduleName, true);
+  return _loadModuleSync(filename, userResolver);
+
 }
 
 module.exports = {
-  requireAsync, requireSync, resolveModulePath
+  requireAsync, requireSync, resolveModulePath, syncRequire
 };

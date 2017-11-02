@@ -40,6 +40,12 @@ class Resolver {
     return (cb ? resolver(moduleId, options, cb) : promisify(resolver)(moduleId, options));
   }
 
+  resolveSync(moduleId, dir) {
+    const resolver = config.get('resolve-module');
+    const options = Object.assign(pick(this, allowedOptions), {basedir:dir || __dirname});
+    return resolver.sync(moduleId, options);
+  }
+
   addExtensions(...ext) {
     this.extensions = uniq([...this.extensions, ...flattenDeep(ext)]);
     return this.extensions;

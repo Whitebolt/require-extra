@@ -115,5 +115,6 @@ util.reflect = function reflect(from, to, properties) {
 
 util.readDir = util.promisify(fs.readdir);
 util.readFile = util.promisify(fs.readFile);
+util.readFileSync = fs.readFileSync;
 
 module.exports = util;
