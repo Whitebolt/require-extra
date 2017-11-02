@@ -113,6 +113,23 @@ util.reflect = function reflect(from, to, properties) {
   properties.forEach(property=>to[property] = from[property].bind(from));
 };
 
+util.lopAdd = function lopAdd(path, addition, first=false) {
+  let parts = path.split('/').filter(part=>part);
+  if ((parts[parts.length-1] === addition) && parts.length) parts.pop();
+  if (parts.length && !first) parts.pop();
+  parts.push(addition);
+  return '/'+parts.join('/');
+};
+
+util.createLopAddIterator = function* createLopAddIterator(path, addition) {
+  path = util.lopAdd(path, addition, true);
+  while (path !== `/${addition}`) {
+    yield path;
+    path = util.lopAdd(path, addition);
+  }
+  yield path;
+};
+
 util.readDir = util.promisify(fs.readdir);
 util.readFile = util.promisify(fs.readFile);
 util.readFileSync = fs.readFileSync;

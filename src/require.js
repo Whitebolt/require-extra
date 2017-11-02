@@ -245,13 +245,7 @@ function _parseRequireParams([userResolver, moduleName, callback], useSyncResolv
 
 function syncRequire(...params) {
   const [userResolver, moduleName] = _parseRequireParams(params);
-
-  if (userResolver.isCoreModule(moduleName)) {
-    if (!cache.has(moduleName)) cache.set(moduleName, __require(moduleName));
-    //if (moduleName === 'util') console.log('Core', moduleName, cache.get(moduleName));
-    return cache.get(moduleName);
-  }
-
+  if (userResolver.isCoreModule(moduleName)) return __require(moduleName);
   userResolver.basedir = userResolver.basedir || userResolver.dir;
   const filename = resolveModulePathSync(userResolver, moduleName, true);
   return _loadModuleSync(filename, userResolver);
