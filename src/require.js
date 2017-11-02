@@ -6,8 +6,8 @@ const requireLike = require('require-like');
 const Resolver = require('./resolver');
 const cache = require('./cache');
 const path = require('path');
-
-const {isString, readFile, readFileSync, getCallingDir, promisify, pick} = require('./util');
+const Module = require('module');
+const {isString, readFile, readFileSync, getCallingDir, promisify, pick, createLopAddIterator} = require('./util');
 
 
 /**
@@ -80,6 +80,19 @@ function _loadModuleText(fileName, sync=false) {
   return sync?readFileSync(fileName, 'utf-8'):readFile(fileName, 'utf8');
 }
 
+function _getParent(userResolver) {
+  if (userResolver.hasOwnProperty('parent')) {
+    if (!isString(userResolver.parent)) return userResolver.parent;
+    if (cache.has(userResolver.parent)) return cache.get(userResolver.parent);
+  }
+
+  return config.get('parent').parent || config.get('parent');
+}
+
+const xIsJson = /\.json$/;
+const xIsJsonOrNode = /\.(?:json|node)$/;
+
+
 /**
  * Evaluate module text in similar fashion to require evaluations.
  *
@@ -90,12 +103,28 @@ function _loadModuleText(fileName, sync=false) {
  */
 function _evalModuleText(filename, content, userResolver) {
   if (content === undefined) return;
-  if (/\.json$/.test(filename)) {
-    return {
-      exports: JSON.parse(content),
-      __filename: filename,
-      __dirname: path.dirname(filename)
+  if (xIsJsonOrNode.test(filename)) {
+    const time = process.hrtime();
+    const parent = _getParent(config);
+    const module = new Module(filename, parent);
+    module.filename = filename;
+    module.paths = [...createLopAddIterator(__dirname, config.moduleDirectory || 'node_modules')];
+    module.loaded = false;
+
+    cache.set(filename, module);
+
+    if (xIsJson.test(filename)) {
+      module.exports = JSON.parse(content);
+    } else {
+      module.exports = process.dlopen(module, filename);
     }
+
+    module.loaded = true;
+    const diff = process.hrtime(time);
+    const ms = parseInt((diff[0] * 1000) + (diff[1] / 1000000), 10);
+
+    console.log(`${cache.size} ${ms+'ms'} ${filename}`);
+    return module;
   } else {
     return _eval(Object.assign(
       {content, filename, includeGlobals:true, syncRequire, resolveModulePath},
@@ -129,7 +158,6 @@ async function _loadModule(filename, userResolver) {
  */
 function _loadModuleSync(filename, userResolver) {
   if (!cache.has(filename)) {
-    //console.log('setting cache', filename, cache.size);
     cache.set(filename, _evalModuleText(filename, _loadModuleText(filename, true), userResolver));
   }
   return cache.get(filename).exports;
@@ -249,7 +277,6 @@ function syncRequire(...params) {
   userResolver.basedir = userResolver.basedir || userResolver.dir;
   const filename = resolveModulePathSync(userResolver, moduleName, true);
   return _loadModuleSync(filename, userResolver);
-
 }
 
 module.exports = {
