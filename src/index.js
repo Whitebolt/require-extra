@@ -1,7 +1,7 @@
 /* jshint node: true */
 'use strict';
 
-const config = require('./config');
+const settings = require('./settings');
 const Resolver = require('./resolver');
 const tryModule = require('./try');
 const {requireAsync, resolveModulePath} = require('./require');
@@ -14,17 +14,17 @@ const exported = function(...params){
   return requireAsync(...params);
 };
 
-exported.resolve = promiseLibraryWrap(resolveModulePath, config);
-exported.try = promiseLibraryWrap(tryModule, config);
+exported.resolve = promiseLibraryWrap(resolveModulePath, settings);
+exported.try = promiseLibraryWrap(tryModule, settings);
 exported.getResolver = Resolver.getResolver;
 exported.Resolver = Resolver;
-exported.import = promiseLibraryWrap(importDirectory, config);
+exported.import = promiseLibraryWrap(importDirectory, settings);
 exported.workspace = (id, value)=>{
   if (!value) return workspaces.exportedGet(id);
   return workspaces.set(id, value);
 };
 
-reflect(config, exported, ['get', 'set', 'delete']);
+reflect(settings, exported, ['get', 'set', 'delete']);
 deprecated('getModule', 'try', exported);
 deprecated('importDirectory', 'import', exported);
 

@@ -1,6 +1,6 @@
 'use strict';
 
-const config = require('./config');
+const settings = require('./settings');
 const _eval = require('./eval');
 const requireLike = require('require-like');
 const Resolver = require('./resolver');
@@ -8,6 +8,7 @@ const cache = require('./cache');
 const Module = require('./Module');
 const path = require('path');
 const {isString, readFile, readFileSync, getCallingDir, promisify} = require('./util');
+
 const xIsJson = /\.json$/;
 const xIsJsonOrNode = /\.(?:json|node)$/;
 
@@ -22,7 +23,7 @@ const xIsJsonOrNode = /\.(?:json|node)$/;
  * @returns {Object}      The resolver object.
  */
 function _getResolve(obj) {
-  if (!obj) return config.get('resolver');
+  if (!obj) return settings.get('resolver');
   if (obj instanceof Resolver) return obj;
   if (obj.resolver) return obj.resolver;
   let pass = true;
@@ -51,7 +52,7 @@ function _getRoot(obj) {
  * @returns {Promise.<string>}
  */
 function resolveModulePath(userResolver, moduleName) {
-  [moduleName, userResolver] = [moduleName || userResolver, userResolver || config.get('resolver')];
+  [moduleName, userResolver] = [moduleName || userResolver, userResolver || settings.get('resolver')];
   let dir = _getRoot(userResolver);
   return _getResolve(userResolver).resolve(moduleName, dir);
 }
@@ -65,7 +66,7 @@ function resolveModulePath(userResolver, moduleName) {
  * @returns {Promise.<string>}
  */
 function resolveModulePathSync(userResolver, moduleName) {
-  [moduleName, userResolver] = [moduleName || userResolver, userResolver || config.get('resolver')];
+  [moduleName, userResolver] = [moduleName || userResolver, userResolver || settings.get('resolver')];
   let dir = _getRoot(userResolver);
   return _getResolve(userResolver).resolveSync(moduleName, dir);
 }
@@ -83,17 +84,18 @@ function _loadModuleText(fileName, sync=false) {
 }
 
 /**
- * Evaluate module text in similar fashion to require evaluations.
+ * Evaluate module text in similar fashion to require evaluations, returning the module.
  *
  * @private
- * @param {string} filename   The path of the evaluated module.
- * @param {string} content   The text content of the module.
- * @returns {*}
+ * @param {string} filename                   The path of the evaluated module.
+ * @param {string} content                    The text content of the module.
+ * @param {Resolver|Object} [userResolver]    Resolver to use, if not a resolver assume it is config for a new resolver.
+ * @returns {Module}                          The new module.
  */
 function _evalModuleText(filename, content, userResolver) {
   if (content === undefined) return;
 
-  const moduleConfig = _createModuleConfig(filename, content, userResolver);
+  const moduleConfig = _createModuleConfig(filename, content, _getResolve(userResolver));
   if (xIsJsonOrNode.test(filename)) {
     const time = process.hrtime();
     const module = new Module(moduleConfig);
@@ -115,6 +117,15 @@ function _evalModuleText(filename, content, userResolver) {
   }
 }
 
+/**
+ * Create a config object to pass to _eval or Module constructor using supplied filename, content and Resolver.
+ *
+ * @private
+ * @param {string} filename           The filename to create for.
+ * @param {string|Buffer} content     The content of the file.
+ * @param {Resolver} userResolver     The Resolver being used.
+ * @returns {Object}                  The new config object.
+ */
 function _createModuleConfig(filename, content, userResolver) {
   return Object.assign({
     content,
@@ -131,8 +142,9 @@ function _createModuleConfig(filename, content, userResolver) {
  * on failure.
  *
  * @private
- * @param {string} filename   The path of the evaluated module.
- * @returns {Promise.<*>}
+ * @param {string} filename                   The path of the evaluated module.
+ * @param {Resolver|Object} [userResolver]    Resolver to use, if not a resolver assume it is config for a new resolver.
+ * @returns {Promise.<*>}                     The exports of the module
  */
 async function _loadModule(filename, userResolver) {
   if (!cache.has(filename)) {
@@ -146,8 +158,9 @@ async function _loadModule(filename, userResolver) {
  * on failure.
  *
  * @private
- * @param {string} filename   The path of the evaluated module.
- * @returns {*}
+ * @param {string} filename                   The path of the evaluated module.
+ * @param {Resolver|Object} [userResolver]    Resolver to use, if not a resolver assume it is config for a new resolver.
+ * @returns {*}                               The exports of the module
  */
 function _loadModuleSync(filename, userResolver) {
   if (!cache.has(filename)) {
@@ -165,13 +178,14 @@ function _loadModuleSync(filename, userResolver) {
  * on failure.
  *
  * @private
- * @param {string} modulePath   The path of the evaluated module.
+ * @param {string} filename                 The path of the evaluated module.
+ * @param {Resolver|Object} [userResolver]    Resolver to use, if not a resolver assume it is config for a new resolver.
  * @returns {*}
  */
-async function _loadModuleSyncAsync(modulePath, userResolver) {
-  const localRequire = requireLike(userResolver.parent || config.get('parent').filename);
+async function _loadModuleSyncAsync(filename, userResolver) {
+  const localRequire = requireLike(_getResolve(userResolver).parent || settings.get('parent').filename);
   await promisify(setImmediate)();
-  return localRequire(modulePath);
+  return localRequire(filename);
 }
 
 /**
@@ -179,13 +193,13 @@ async function _loadModuleSyncAsync(modulePath, userResolver) {
  *
  * @private
  * @param {Object} userResolver         User-created resolver function.
- * @param {string} moduleName           Module name or path, same format as for require().
+ * @param {string} moduleId             Module name or path, same format as for require().
  * @param {boolean} useSyncResolve      Whether to use the native node require function (sychronous) or the require
  *                                      function from this module, which is async.
  * @returns {Promise.<*|undefined>}     The module or undefined.
  */
-async function _loader(userResolver, moduleName, useSyncResolve) {
-  const modulePath = await resolveModulePath(userResolver, moduleName);
+async function _loader(userResolver, moduleId, useSyncResolve) {
+  const modulePath = await resolveModulePath(userResolver, moduleId);
   return (useSyncResolve?_loadModuleSyncAsync:_loadModule)(modulePath, userResolver);
 }
 
@@ -196,13 +210,13 @@ async function _loader(userResolver, moduleName, useSyncResolve) {
  *
  * @private
  * @param {Object} userResolver                 User-created resolver function or an options object.
- * @param {string|Array} moduleName             Module name or path (or array of either), same format as for require().
+ * @param {string|Array} moduledId              Module name or path (or array of either), same format as for require().
  * @param {function} [callback]                 Node-style callback to use instead of (or as well as) returned promise.
  * @param {boolean} [useSyncResolve=false]      Whether to use the native node require function (sychronous) or the
  *                                              require function from this module, which is async.
  * @returns {Promise.<*|undefined>}             Promise, resolved with the module(s) or undefined.
  */
-async function _requireX(userResolver, moduleName, callback, useSyncResolve=false) {
+async function _requireX(userResolver, moduledId, callback, useSyncResolve=false) {
   if (userResolver.dir) {
     console.warn(`The property userResolver.dir is deprecated, please use userResolver.basedir instead. This being used in ${getCallingFileName()}`);
   }
@@ -210,9 +224,9 @@ async function _requireX(userResolver, moduleName, callback, useSyncResolve=fals
   userResolver.basedir = userResolver.basedir || userResolver.dir;
 
   try {
-    const modules = await (Array.isArray(moduleName) ?
-        Promise.all(moduleName.map(moduleName=>_loader(userResolver, moduleName, useSyncResolve))) :
-        _loader(userResolver, moduleName, useSyncResolve)
+    const modules = await (Array.isArray(moduledId) ?
+        Promise.all(moduledId.map(moduleName=>_loader(userResolver, moduleName, useSyncResolve))) :
+        _loader(userResolver, moduledId, useSyncResolve)
     );
 
     if (!callback) return modules;
@@ -224,6 +238,25 @@ async function _requireX(userResolver, moduleName, callback, useSyncResolve=fals
 }
 
 /**
+ * Take arguments supplied to the different require function and parse ready for internal use.
+ *
+ * @private
+ * @param {Resolver} [userResolver]                               Resolver to use.
+ * @param {string} moduleId                                       The module to load.
+ * @param {Function} [callback]                                   Node-style callback to fire if promise not wanted.
+ * @param {boolean} [useSyncResolve=false]                        Use the native require to child requires?
+ * @returns {[{Resolver}, {string}, {Function}, {boolean}]}       Parsed parameters, ready for use.
+ */
+function _parseRequireParams([userResolver, moduleId, callback], useSyncResolve=false) {
+  if(isString(userResolver) || Array.isArray(userResolver)) {
+    return [settings.get('resolver'), userResolver, moduleId, useSyncResolve];
+  }else {
+    return [_getResolve(userResolver), moduleId, callback, useSyncResolve];
+  }
+}
+
+
+/**
  * Load a module asynchronously, this is an async version of require().  Will load a collection of modules if an array
  * is supplied.  Will reject if module is not found or on error.
  *
@@ -231,14 +264,14 @@ async function _requireX(userResolver, moduleName, callback, useSyncResolve=fals
  *
  * @public
  * @param {Object} [userResolver=config.get('resolver')]      User-created resolver function or an options object.
- * @param {string|Array} moduleName                           Module name or path (or array of either), same format
+ * @param {string|Array} moduleId                             Module name or path (or array of either), same format
  *                                                            as for require().
  * @param {function} [callback]                               Node-style callback to use instead of (or as well as)
  *                                                            returned promise.
- * @returns {Promise.<*>}                                     Promise, resolved with the module(s) or undefined.
+ * @returns {Promise.<*>}                                     Promise, resolved with the module(s) exports or undefined.
  */
-function requireSync(userResolver, moduleName, callback) {
-  return _requireX(..._parseRequireParams([userResolver, moduleName, callback], true));
+function requireSync(userResolver, moduleId, callback) {
+  return _requireX(..._parseRequireParams([userResolver, moduleId, callback], true));
 }
 
 /**
@@ -247,28 +280,27 @@ function requireSync(userResolver, moduleName, callback) {
  *
  * @public
  * @param {Object} [userResolver=config.get('resolver')]      User-created resolver function or an options object.
- * @param {string|Array} moduleName                           Module name or path (or array of either), same format as
+ * @param {string|Array} moduleId                             Module name or path (or array of either), same format as
  *                                                            for require().
  * @param {function} [callback]                               Node-style callback to use instead of (or as well as) returned promise.
- * @returns {Promise.<*>}                                     Promise, resolved with the module(s) or undefined.
+ * @returns {Promise.<*>}                                     Promise, resolved with the module(s) exports or undefined.
  */
-function requireAsync(userResolver, moduleName, callback) {
-  return _requireX(..._parseRequireParams([userResolver, moduleName, callback]));
+function requireAsync(userResolver, moduleId, callback) {
+  return _requireX(..._parseRequireParams([userResolver, moduleId, callback]));
 }
 
-function _parseRequireParams([userResolver, moduleName, callback], useSyncResolve=false) {
-  if(isString(userResolver) || Array.isArray(userResolver)) {
-    return [config.get('resolver'), userResolver, moduleName, useSyncResolve];
-  }else {
-    return [_getResolve(userResolver), moduleName, callback, useSyncResolve];
-  }
-}
-
+/**
+ * CommonJs require function, similar to node.js native version but with extra features of this module.
+ *
+ * @param {Resolver} [userResolver]   Resolver to use in requiring.
+ * @param {string} moduleId           Module to load.
+ * @returns {*}                       Module exports
+ */
 function syncRequire(...params) {
-  const [userResolver, moduleName] = _parseRequireParams(params);
-  if (userResolver.isCoreModule(moduleName)) return __require(moduleName);
+  const [userResolver, moduleId] = _parseRequireParams(params);
+  if (userResolver.isCoreModule(moduleId)) return __require(moduleId);
   userResolver.basedir = userResolver.basedir || userResolver.dir;
-  const filename = resolveModulePathSync(userResolver, moduleName, true);
+  const filename = resolveModulePathSync(userResolver, moduleId, true);
   return _loadModuleSync(filename, userResolver);
 }
 

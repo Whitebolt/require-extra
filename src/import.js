@@ -1,7 +1,7 @@
 'use strict';
 
 const path = require('path');
-const config = require('./config');
+const settings = require('./settings');
 const {requireAsync, requireSync} = require('./require');
 const {
   isFunction, intersection, uniq, readDir, makeArray, flattenDeep,
@@ -19,7 +19,7 @@ const {
 async function _filesInDirectory(dirPath, options) {
   const basedir = options.basedir || getCallingDir();
   const resolvedDirPath = basedir?path.resolve(basedir, dirPath):dirPath;
-  let xExt = _getExtensionRegEx(options.extension || config.get('extensions'));
+  let xExt = _getExtensionRegEx(options.extension || settings.get('extensions'));
 
   try {
     return (await readDir(resolvedDirPath)).filter(
@@ -32,8 +32,14 @@ async function _filesInDirectory(dirPath, options) {
   }
 }
 
+/**
+ * Get all the files in a collection of directories.
+ *
+ * @param {Array|Set|string} dirPaths     Path(s) to get files from.
+ * @param [options]                       Import options object.
+ */
 async function filesInDirectories(dirPaths, options) {
-  let files = await Promise.all(dirPaths.map(dirPath=>_filesInDirectory(dirPath, options)));
+  let files = await Promise.all(makeArray(dirPaths).map(dirPath=>_filesInDirectory(dirPath, options)));
   return flattenDeep(files);
 }
 
@@ -46,7 +52,7 @@ async function filesInDirectories(dirPaths, options) {
  * @param {Array|string} [ext=config.get('extensions')]   File extension(s) to remove.
  * @returns {string}                                      The filename without given extension(s).
  */
-function _getFileName(filePath, ext=config.get('extensions')) {
+function _getFileName(filePath, ext=settings.get('extensions')) {
   return path.basename(filePath).replace(_getExtensionRegEx(ext), '');
 }
 
@@ -58,7 +64,7 @@ function _getFileName(filePath, ext=config.get('extensions')) {
  * @param {Array|string} [ext=config.get('extensions')]     The extension(s).
  * @returns {RegExp}                                        File path matcher.
  */
-function _getExtensionRegEx(ext=config.get('extensions')) {
+function _getExtensionRegEx(ext=settings.get('extensions')) {
   let _ext = '(?:' + makeArray(ext).join('|') + ')';
   return new RegExp(_ext + '$');
 }
@@ -72,7 +78,7 @@ function _getExtensionRegEx(ext=config.get('extensions')) {
  * @returns {Array}
  */
 function _getFileTests(fileName, options={}) {
-  let extension =  makeArray(options.extension || config.get('extensions'));
+  let extension =  makeArray(options.extension || settings.get('extensions'));
   return uniq(
     [path.basename(fileName)].concat(
       extension.map(ext=>path.basename(fileName, ext)
@@ -134,7 +140,7 @@ function _importDirectoryOptionsParser(options={}) {
   const _options = Object.assign({
     imports: {},
     onload: options.callback,
-    extension: config.get('extensions')
+    extension: settings.get('extensions')
   }, options, {
     useSyncRequire: !!options.useSyncRequire,
     merge: !!options.merge

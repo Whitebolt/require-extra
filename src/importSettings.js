@@ -4,9 +4,23 @@
 
 var path = require('path');
 
+/**
+ * Load config properties from package.json of module.
+ *
+ * @param {string} id                   Id in package.json to grab from.
+ * @param {Array} copyProps             Properties to get.
+ * @param {Object} defaultPropValues    Default values to apply.
+ * @returns {Object}                    The config.
+ */
 function loadConfig(id, copyProps, defaultPropValues) {
   var cwd = path.normalize(__dirname + '/../');
 
+  /**
+   * Get the package file without error-ing on fail,
+   *
+   * @param {string} [filename='package.json']    Package source name.
+   * @returns {Object}                            The package file.
+   */
   function getPackageData(filename) {
     filename = filename || 'package.json';
     try {
@@ -16,6 +30,12 @@ function loadConfig(id, copyProps, defaultPropValues) {
     }
   }
 
+  /**
+   * A local version of Object.assign() for old node versions.
+   *
+   * @param {Array} [...=[{}]]     Objects to assign (in order).
+   * @returns {Object}
+   */
   function assign() {
     arguments[0] = arguments[0] || {};
 
@@ -27,6 +47,14 @@ function loadConfig(id, copyProps, defaultPropValues) {
     return arguments[0];
   }
 
+  /**
+   * Pick the given properties from the given object, returning a new object.
+   *
+   * @param {Object} from             Object to take from.
+   * @param {Array} [picks=[]]        Properties to pick.
+   * @param {Object} [defaults={}]    Defaults to apply.
+   * @returns {Object}
+   */
   function pick(from, picks, defaults) {
     picks = picks || [];
     defaults = defaults || {};

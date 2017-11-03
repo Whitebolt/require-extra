@@ -1,6 +1,6 @@
 'use strict';
 
-const config = require('./config');
+const settings = require('./settings');
 const {uniq, flattenDeep, pick, promisify, makeArray, without, getCallingFileName} = require('./util');
 const Private = require("./Private");
 
@@ -19,8 +19,8 @@ const toExport = ['moduleDirectory', 'parent'];
 
 function _importOptions(instance, options={}) {
   const _options = Object.assign({
-    extensions: new Set(makeArray(config.get('extensions'))),
-    moduleDirectory: options.moduleDirectory || options.modules || config.get('moduleDirectory'),
+    extensions: new Set(makeArray(settings.get('extensions'))),
+    moduleDirectory: options.moduleDirectory || options.modules || settings.get('moduleDirectory'),
     preserveSymlinks: false
   }, options);
 
@@ -35,13 +35,13 @@ class Resolver {
   }
 
   resolve(moduleId, dir, cb) {
-    const resolver = config.get('resolve-module');
+    const resolver = settings.get('resolve-module');
     const options = Object.assign(pick(this, allowedOptions), {basedir:dir || __dirname});
     return (cb ? resolver(moduleId, options, cb) : promisify(resolver)(moduleId, options));
   }
 
   resolveSync(moduleId, dir) {
-    const resolver = config.get('resolve-module');
+    const resolver = settings.get('resolve-module');
     const options = Object.assign(pick(this, allowedOptions), {basedir:dir || __dirname});
     return resolver.sync(moduleId, options);
   }
@@ -57,13 +57,13 @@ class Resolver {
   }
 
   static addExtenstions(...ext) {
-    config.set('extensions', uniq([...config.get('extensions'), ...flattenDeep(ext)]));
-    return config.get('extensions');
+    settings.set('extensions', uniq([...settings.get('extensions'), ...flattenDeep(ext)]));
+    return settings.get('extensions');
   }
 
   static removeExtensions (...ext) {
-    config.set('extensions', without(config.get('extensions'), ...flattenDeep(ext)));
-    return config.get('extensions');
+    settings.set('extensions', without(settings.get('extensions'), ...flattenDeep(ext)));
+    return settings.get('extensions');
   }
 
   static get resolveLike() {
@@ -88,7 +88,7 @@ class Resolver {
   }
 
   isCoreModule(moduleId) {
-    return !!config.get('resolve-module').isCore(moduleId);
+    return !!settings.get('resolve-module').isCore(moduleId);
   }
 
   /**

@@ -23,6 +23,12 @@ util.makeArray = function makeArray(value, defaultValue) {
   return util.castArray(value);
 };
 
+/**
+ * Ponyfill for util.promisify if not available.
+ *
+ * @param {Function} func     Function to promisify.
+ * @returns {Function}        Promisified function.
+ */
 util.promisify = function promisify(func) {
   if (_util.promisify) return _util.promisify(func);
 
@@ -97,11 +103,25 @@ util.getAllPropertyNames = function getAllPropertyNames(obj) {
   return all;
 };
 
-util.promiseLibraryWrap = function promiseLibraryWrap(func, config) {
-  if (config.has('Promise')) return config.get('Promise').resolve(func);
+/**
+ * Wrap the given returned promise in the module defined promise library.
+ *
+ * @param {Function} func                       Function to wrap.
+ * @param {RequireExtraSettings|Map} settings   The module settings map.
+ * @returns {Function}                          Wrapped function.
+ */
+util.promiseLibraryWrap = function promiseLibraryWrap(func, settings) {
+  if (settings.has('Promise')) return settings.get('Promise').resolve(func);
   return func;
 };
 
+/**
+ * Console warn about a deprecated method.
+ *
+ * @param {string} from         Old method name.
+ * @param {string} to           New method name.
+ * @param {Object} exported     Object to wrap method on.
+ */
 util.deprecated = function deprecated(from, to, exported) {
   exported[from] = (...params)=>{
     console.warn(`Use of ${from} is deprecated, please use ${to}() instead, it is exactly the same. This being used in ${util.getCallingFileName()}`);
@@ -109,10 +129,25 @@ util.deprecated = function deprecated(from, to, exported) {
   };
 };
 
-util.reflect = function reflect(from, to, properties) {
-  properties.forEach(property=>to[property] = from[property].bind(from));
+/**
+ * Reflect given methods from one object to another, keeping the original binding.
+ *
+ * @param {Object} from                      Object to reflect.
+ * @param {Object} to                        Object to reflect to.
+ * @param {Array.<string>|string} methods    Method(s) to reflect.
+ */
+util.reflect = function reflect(from, to, methods) {
+  util.makeArray(methods).forEach(property=>to[property] = from[property].bind(from));
 };
 
+/**
+ * Lop a path to its parent adding a directory on.
+ *
+ * @param {string} path             Path to lop.
+ * @param {string} addition         Part to add to path.
+ * @param {boolean} [first=false]   Is this the first instance (do not lop, just add).
+ * @returns {string}                Lopped and added path.
+ */
 util.lopAdd = function lopAdd(path, addition, first=false) {
   let parts = path.split('/').filter(part=>part);
   if ((parts[parts.length-1] === addition) && parts.length) parts.pop();
@@ -121,6 +156,12 @@ util.lopAdd = function lopAdd(path, addition, first=false) {
   return '/'+parts.join('/');
 };
 
+/**
+ * Generator to do a lopAdd on a given path back to root.
+ *
+ * @param {string} path       Path to do iterations on.
+ * @param {string} addition   Directory we are adding.
+ */
 util.createLopAddIterator = function* createLopAddIterator(path, addition) {
   path = util.lopAdd(path, addition, true);
   while (path !== `/${addition}`) {

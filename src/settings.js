@@ -14,6 +14,8 @@ const setterOverrides = {
 };
 
 /**
+ * Settings class for this module.
+ *
  * @singleton
  * @extends Map
  */
@@ -26,10 +28,23 @@ class RequireExtraSettings extends Map {
     this.set('resolve-module', require('resolve'));
   }
 
+  /**
+   * Add a value to a given key ensuring the new array has only unique items.
+   *
+   * @param {string} key    Key to add to.
+   * @param {*} value       Value to add.
+   * @returns {Array}       The new array.
+   */
   add(key, value) {
     return this.set(key, uniq([...makeArray(this.get(key)), ...makeArray(value)]));
   }
 
+  /**
+   * Get a given setting.  Use overrides to tweak results on certain settings.
+   *
+   * @param {string} key      Key to get.
+   * @returns {*}
+   */
   get(key) {
     let value = super.get(key);
     if (getterOverrides.hasOwnProperty(key)) return super.set(key, getterOverrides[key](value));
@@ -41,6 +56,13 @@ class RequireExtraSettings extends Map {
     return value;
   }
 
+  /**
+   * Set a given setting.  Use overrides to parse values before settning.
+   *
+   * @param {string} key    Key to set.
+   * @param {*} value       Value to set it to.
+   * @returns {boolean}     Did it set.
+   */
   set(key, value) {
     if (setterOverrides.hasOwnProperty(key)) return super.set(key, setterOverrides[key](value));
     return super.set(key, value);
