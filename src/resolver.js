@@ -12,9 +12,9 @@ const allowedOptions = [
   'pathFilter', 'paths', 'moduleDirectory', 'preserveSymlinks'
 ];
 
-const otherOptions = [
-  'parent'
-];
+const otherOptions = ['parent'];
+
+const toExport = ['moduleDirectory', 'parent'];
 
 
 function _importOptions(instance, options={}) {
@@ -77,6 +77,10 @@ class Resolver {
   set extensions(value) {
     Private.set(this, 'extensions', makeArray(value));
     return true;
+  }
+
+  get export() {
+    return pick(this, toExport);
   }
 
   getState() {

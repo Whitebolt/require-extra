@@ -7,6 +7,7 @@ const tryModule = require('./try');
 const {requireAsync, resolveModulePath} = require('./require');
 const importDirectory = require('./import');
 const {reflect, deprecated, promiseLibraryWrap} = require('./util');
+const Module = require('./Module');
 
 const exported = function(...params){
   return requireAsync(...params);

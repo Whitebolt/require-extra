@@ -3,12 +3,12 @@
 const vm = require('vm');
 const path = require('path');
 const isBuffer = Buffer.isBuffer;
-const requireLike = require('require-like');
-const {isString, isObject, createLopAddIterator} = require('./util');
-const settings = require('./config');
+const {isString, makeArray} = require('./util');
 const semvar = require('semver');
 const cache = require('./cache');
-const Module = require('module');
+const Module = require('./Module');
+
+const workspaces = new Map();
 
 const { r, g, b, w, c, m, y, k } = [
   ['r', 1], ['g', 2], ['b', 4], ['w', 7],
@@ -25,7 +25,8 @@ function _parseConfig(config) {
     filename:module.parent.filename,
     scope:{},
     includeGlobals:false,
-    proxyGlobal:true
+    proxyGlobal:true,
+    workspace: ['default']
   }, config);
 
   config.content = isBuffer(config.content)?config.content.toString():config.content;
@@ -33,17 +34,25 @@ function _parseConfig(config) {
   return _config;
 }
 
-function createProxy(sandbox) {
-  return new Proxy(sandbox, {
+function _createProxy(config) {
+  const _workspaces = makeArray(config.workspace || ['default']).map(workspaceId=>{
+    if (!workspaces.has(workspaceId)) workspaces.set(workspaceId, {});
+    return workspaces.get(workspaceId);
+  });
+
+  return new Proxy(global, {
     get: function(target, property, receiver) {
-      //if ((property === 'exports') && !(property in target)) return sandbox.module.exports;
       if (property === 'global') return global;
-      if (property in target) return Reflect.get(target, property, receiver);
-      return Reflect.get(global, property, receiver);
+      for (let n=0; n<_workspaces.length; n++) {
+        if (property in _workspaces[n]) return Reflect.get(_workspaces[n], property, receiver);
+      }
+      return Reflect.get(target, property, receiver);
     },
     has: function(target, property) {
-      //if (property === 'exports') return true;
-      return Reflect.has(target, property) || Reflect.has(global, property);
+      for (let n=0; n<_workspaces.length; n++) {
+        if (property in _workspaces[n]) return true;
+      }
+      return Reflect.has(target, property);
     },
     set: function(target, property, value, receiver) {
       return Reflect.set(target, property, value, receiver);
@@ -51,43 +60,26 @@ function createProxy(sandbox) {
   });
 }
 
-function _getParent(config) {
-  if (config.hasOwnProperty('parent')) {
-    if (!isString(config.parent)) return config.parent;
-    if (cache.has(config.parent)) return cache.get(config.parent);
+function _createSandbox(config) {
+  const workspaceId = makeArray(config.workspace || []).join('+');
+
+  if (proxiedGlobal && proxiedGlobal) {
+    if (!workspaces.has(workspaceId)) workspaces.set(workspaceId, vm.createContext(_createProxy(config)));
+    return workspaces.get(workspaceId);
   }
 
-  return settings.get('parent').parent || settings.get('parent');
-}
-
-function _createSandbox(config) {
-  let sandbox = {};
-
+  const sandbox = {};
   if (config.includeGlobals && (!proxiedGlobal || !config.proxyGlobal)) Object.assign(sandbox, global);
-  if (isObject(config.scope)) Object.assign(sandbox, config.scope);
+  //if (isObject(config.scope)) Object.assign(sandbox, config.scope);
 
-  return ((proxiedGlobal && config.proxyGlobal)?createProxy(sandbox):sandbox);
-}
-
-function _getRequire(config) {
-  if (!config.syncRequire && !config.resolveModulePath) return requireLike(config.filename);
-
-  const _require = function(moduleId) {
-    return config.syncRequire({basedir:path.dirname(config.filename), parent:config.filename}, moduleId);
-  };
-  _require.resolve = function(moduleId) {
-    return config.resolveModulePath({basedir:path.dirname(config.filename)}, moduleId);
-  };
-  _require.cache = cache.source;
-
-  return _require;
+  return vm.createContext(sandbox);
 }
 
 function _createOptions(config) {
   return {
     filename:config.filename,
     displayErrors:true,
-    timeout: 20*1000
+    timeout: config.timeout || 20*1000
   };
 }
 
@@ -98,18 +90,15 @@ function _createScript(config, options) {
 }
 
 function _runScript(config, script, sandbox, options) {
-  const parent = _getParent(config);
-  const module = new Module(config.filename, parent);
-  const __filename = module.filename = config.filename;
-  const __dirname = path.dirname(config.filename);
-  const require = module.require = _getRequire(config); //requireLike(config.filename);
+  const module = new Module(config);
 
-  module.paths = [...createLopAddIterator(__dirname, config.moduleDirectory || 'node_modules')];
-  module.loaded = false;
-
-  cache.set(config.filename, module);
-
-  script.runInNewContext(sandbox, options)(module.exports, require, module, __filename, __dirname);
+  script.runInContext(sandbox, options)(
+    module.exports,
+    module.require,
+    module,
+    module.filename,
+    config.basedir || path.dirname(module.filename)
+  );
 
   module.loaded = true;
 
