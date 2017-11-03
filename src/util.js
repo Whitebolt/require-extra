@@ -17,7 +17,7 @@ const _util = require('util');
  * @param {Array|Set|*} value		Value to return or convert.
  * @returns {Array}					The converted value (or original if already an array).
  */
-util.makeArray = function makeArray(value) {
+util.makeArray = function makeArray(value, defaultValue) {
   if (value === undefined) return [];
   if (value instanceof Set) return [...value];
   return util.castArray(value);

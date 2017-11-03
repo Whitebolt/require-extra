@@ -8,6 +8,7 @@ const {requireAsync, resolveModulePath} = require('./require');
 const importDirectory = require('./import');
 const {reflect, deprecated, promiseLibraryWrap} = require('./util');
 const Module = require('./Module');
+const workspaces = require('./workspaces');
 
 const exported = function(...params){
   return requireAsync(...params);
@@ -18,6 +19,10 @@ exported.try = promiseLibraryWrap(tryModule, config);
 exported.getResolver = Resolver.getResolver;
 exported.Resolver = Resolver;
 exported.import = promiseLibraryWrap(importDirectory, config);
+exported.workspace = (id, value)=>{
+  if (!value) return workspaces.exportedGet(id);
+  return workspaces.set(id, value);
+};
 
 reflect(config, exported, ['get', 'set', 'delete']);
 deprecated('getModule', 'try', exported);

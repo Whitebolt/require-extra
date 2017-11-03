@@ -4,11 +4,11 @@ const vm = require('vm');
 const path = require('path');
 const isBuffer = Buffer.isBuffer;
 const {isString, makeArray} = require('./util');
-const semvar = require('semver');
 const cache = require('./cache');
 const Module = require('./Module');
+const workspaces = require('./workspaces');
 
-const workspaces = new Map();
+const proxiedGlobal = require('semver').gt(process.versions.node, '8.3.0');
 
 const { r, g, b, w, c, m, y, k } = [
   ['r', 1], ['g', 2], ['b', 4], ['w', 7],
@@ -17,8 +17,6 @@ const { r, g, b, w, c, m, y, k } = [
   ...cols,  [col[0]]: f => `\x1b[3${col[1]}m${f}\x1b[0m`
 }), {});
 
-const proxiedGlobal = (semvar.gt(process.versions.node, '8.3.0'));
-
 
 function _parseConfig(config) {
   const _config = Object.assign({
@@ -26,7 +24,7 @@ function _parseConfig(config) {
     scope:{},
     includeGlobals:false,
     proxyGlobal:true,
-    workspace: ['default']
+    workspace: [workspaces.DEFAULT_WORKSPACE]
   }, config);
 
   config.content = isBuffer(config.content)?config.content.toString():config.content;
@@ -34,39 +32,8 @@ function _parseConfig(config) {
   return _config;
 }
 
-function _createProxy(config) {
-  const _workspaces = makeArray(config.workspace || ['default']).map(workspaceId=>{
-    if (!workspaces.has(workspaceId)) workspaces.set(workspaceId, {});
-    return workspaces.get(workspaceId);
-  });
-
-  return new Proxy(global, {
-    get: function(target, property, receiver) {
-      if (property === 'global') return global;
-      for (let n=0; n<_workspaces.length; n++) {
-        if (property in _workspaces[n]) return Reflect.get(_workspaces[n], property, receiver);
-      }
-      return Reflect.get(target, property, receiver);
-    },
-    has: function(target, property) {
-      for (let n=0; n<_workspaces.length; n++) {
-        if (property in _workspaces[n]) return true;
-      }
-      return Reflect.has(target, property);
-    },
-    set: function(target, property, value, receiver) {
-      return Reflect.set(target, property, value, receiver);
-    }
-  });
-}
-
 function _createSandbox(config) {
-  const workspaceId = makeArray(config.workspace || []).join('+');
-
-  if (proxiedGlobal && proxiedGlobal) {
-    if (!workspaces.has(workspaceId)) workspaces.set(workspaceId, vm.createContext(_createProxy(config)));
-    return workspaces.get(workspaceId);
-  }
+  if (proxiedGlobal && proxiedGlobal) return workspaces.get(...makeArray(config.workspace));
 
   const sandbox = {};
   if (config.includeGlobals && (!proxiedGlobal || !config.proxyGlobal)) Object.assign(sandbox, global);
