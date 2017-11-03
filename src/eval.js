@@ -3,7 +3,7 @@
 const vm = require('vm');
 const path = require('path');
 const isBuffer = Buffer.isBuffer;
-const {isString, makeArray} = require('./util');
+const {isString, makeArray, values} = require('./util');
 const cache = require('./cache');
 const Module = require('./Module');
 const workspaces = require('./workspaces');
@@ -26,7 +26,7 @@ const { r, g, b, w, c, m, y, k } = [
  * @returns {Object}            Parsed config.
  */
 function _parseConfig(config) {
-  const _config = Object.assign({
+  const _config = Object.assign({}, {
     filename:module.parent.filename,
     scope:{},
     includeGlobals:false,
@@ -80,8 +80,23 @@ function _createOptions(config) {
  */
 function _createScript(config, options) {
   if (!isString(config.content)) return config.content;
-  const stringScript = Module.wrap(config.content.replace(/^\#\!.*/, ''));
+  const stringScript = wrap(config.content.replace(/^\#\!.*/, ''), config.scope);
   return new vm.Script(stringScript, options);
+}
+
+/**
+ * Wrap the script content with scape parameters, including optional extra ones.
+ *
+ * @param {string} content      Content to wrap.
+ * @param {Object} scope        Scope parameters to add.
+ * @returns {string}            Wrapped script content.
+ */
+function wrap(content, scope) {
+  const scopeParams = Object.keys(scope).join(',');
+  const comma = ((scopeParams !== '')?', ':'');
+  return `(function (exports, require, module, __filename, __dirname${comma}${scopeParams}) {
+    ${content}
+  });`
 }
 
 /**
@@ -96,14 +111,16 @@ function _createScript(config, options) {
  */
 function _runScript(config, script, sandbox, options) {
   const module = new Module(config);
-
-  script.runInContext(sandbox, options)(
+  const scopeParams = [
     module.exports,
     module.require,
     module,
     module.filename,
-    config.basedir || path.dirname(module.filename)
-  );
+    config.basedir || path.dirname(module.filename),
+    ...values(config.scope)
+  ];
+
+  script.runInContext(sandbox, options)(...scopeParams);
 
   module.loaded = true;
 
