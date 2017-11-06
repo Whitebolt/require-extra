@@ -9,6 +9,8 @@ const importDirectory = require('./import');
 const {reflect, deprecated, promiseLibraryWrap} = require('./util');
 const Module = require('./Module');
 const workspaces = require('./workspaces');
+const emitter = require('./events');
+const cache = require('./cache');
 
 const exported = function(...params){
   return requireAsync(...params);
@@ -23,8 +25,10 @@ exported.workspace = (id, value)=>{
   if (!value) return workspaces.exportedGet(id);
   return workspaces.set(id, value);
 };
+exported.cache = cache;
 
 reflect(settings, exported, ['get', 'set', 'delete']);
+reflect(emitter, exported, ['on', 'once', 'remove']);
 deprecated('getModule', 'try', exported);
 deprecated('importDirectory', 'import', exported);
 

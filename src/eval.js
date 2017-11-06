@@ -7,6 +7,7 @@ const {isString, makeArray, values} = require('./util');
 const cache = require('./cache');
 const Module = require('./Module');
 const workspaces = require('./workspaces');
+const emitter = require('./events');
 
 const proxiedGlobal = require('semver').gt(process.versions.node, '8.3.0');
 
@@ -140,10 +141,13 @@ function evaluate(config) {
   const sandbox = _createSandbox(_config);
   const script = _createScript(_config, options);
   const module = _runScript(config, script, sandbox, options);
-  const diff = process.hrtime(time);
-  const ms = parseInt((diff[0] * 1000) + (diff[1] / 1000000), 10);
 
-  console.log(`${cache.size} ${c(ms+'ms')} ${y(config.filename)}`);
+  emitter.emit('evaluated', new emitter.Evaluated({
+    target:module.filename,
+    source:(module.parent || {}).filename,
+    duration: process.hrtime(time),
+    cacheSize: cache.size
+  }));
 
   return module;
 }

@@ -126,7 +126,8 @@
         {
           "targets": {
             "node": "current"
-          }
+          },
+          "useBuiltIns":true
         }
       ]
     ],

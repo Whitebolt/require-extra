@@ -8,6 +8,7 @@ const cache = require('./cache');
 const Module = require('./Module');
 const path = require('path');
 const {isString, readFile, readFileSync, getCallingDir, promisify} = require('./util');
+const emitter = require('./events');
 
 const xIsJson = /\.json$/;
 const xIsJsonOrNode = /\.(?:json|node)$/;
@@ -107,10 +108,14 @@ function _evalModuleText(filename, content, userResolver) {
     }
 
     module.loaded = true;
-    const diff = process.hrtime(time);
-    const ms = parseInt((diff[0] * 1000) + (diff[1] / 1000000), 10);
 
-    console.log(`${cache.size} ${ms+'ms'} ${filename}`);
+    emitter.emit('evaluated', new emitter.Evaluated({
+      target:module.filename,
+      source:(module.parent || {}).filename,
+      duration:process.hrtime(time),
+      cacheSize: cache.size
+    }));
+
     return module;
   } else {
     return _eval(moduleConfig);

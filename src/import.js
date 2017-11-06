@@ -167,11 +167,10 @@ async function _importDirectoryModules(dirPath, options) {
   const files = await filesInDirectories(makeArray(dirPath), options);
   const modDefs = await Promise.all(files.map(async (fileName)=> {
     if (_canImport(fileName, caller, options)) {
-      //console.log('Importing: ', fileName);
       try {
         return [fileName, await require(options, fileName)];
       } catch(err) {
-        console.log(err);
+
       }
     }
   }));
