@@ -129,7 +129,7 @@
           "targets": {
             "node": "current"
           },
-          "useBuiltIns":true
+          "useBuiltIns": true
         }
       ]
     ],

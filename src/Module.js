@@ -33,7 +33,13 @@ function _getParent(config) {
 function _getRequire(config) {
   if (!config.syncRequire && !config.resolveModulePath) return requireLike(config.filename);
 
-  const _requireResolver = {basedir:config.basedir||path.dirname(config.filename), parent:config.filename};
+  const _requireResolver = {
+    basedir:config.basedir||path.dirname(config.filename),
+    parent:config.filename,
+    scope:config.scope,
+    useSandbox:config.useSandbox
+  };
+
   const requireX = require('./index');
   const _mergeResolver = resolver=>Object.assign({}, _requireResolver, resolver);
   const _getResolver = (params, resolverId=0)=>{

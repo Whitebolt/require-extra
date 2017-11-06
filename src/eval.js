@@ -3,7 +3,7 @@
 const vm = require('vm');
 const path = require('path');
 const isBuffer = Buffer.isBuffer;
-const {isString, makeArray, values} = require('./util');
+const {isString, makeArray, values, isFunction} = require('./util');
 const cache = require('./cache');
 const Module = require('./Module');
 const workspaces = require('./workspaces');
@@ -30,14 +30,14 @@ const { r, g, b, w, c, m, y, k } = [
 function _parseConfig(config) {
   const _config = Object.assign({}, {
     filename:module.parent.filename,
-    scope:{},
+    scope: settings.get('scope') || {},
     includeGlobals:false,
     proxyGlobal:true,
-    useSandbox: !!settings.get('useSandbox'),
+    useSandbox: settings.get('useSandbox') || false,
     workspace: [workspaces.DEFAULT_WORKSPACE]
   }, config);
 
-  config.content = isBuffer(config.content)?config.content.toString():config.content;
+  if (isBuffer(_config.content)) _config.content = _config.content.toString();
 
   return _config;
 }
@@ -81,9 +81,9 @@ function _createOptions(config) {
  * @param {options} options     Options for the script.
  * @returns {VMScript}          New script ready to use.
  */
-function _createScript(config, options) {
+function _createScript(config, options, scope={}) {
   if (!isString(config.content)) return config.content;
-  const stringScript = wrap(config.content.replace(/^\#\!.*/, ''), config.scope);
+  const stringScript = wrap(config.content.replace(/^\#\!.*/, ''), scope);
   return new vm.Script(stringScript, options);
 }
 
@@ -110,14 +110,14 @@ function wrap(content, scope) {
  * @param {Module} module   The module.
  * @returns {Array.<*>}     Parameters.
  */
-function _getScopeParams(config, module) {
+function _getScopeParams(config, module, scope={}) {
   return [
     module.exports,
     module.require,
     module,
     module.filename,
     config.basedir || path.dirname(module.filename),
-    ...values(config.scope)
+    ...values(scope)
   ];
 }
 
@@ -143,16 +143,18 @@ function _runError(error, module) {
  *
  * @private
  * @param {Object} config           Config to use.
- * @param {VMScript} script         Script to run.
  * @param {Object} options          Options for running.
  * @returns {Module}                The module created.
  */
-function _runScript(config, script, options) {
+function _runScript(config, options) {
+  const useSandbox = ((isFunction(config.useSandbox)) ? _config.useSandbox(_config) || false : config.useSandbox);
+  const scope = (isFunction(config.scope) ? config.scope(config) || {} : config.scope);
   const module = new Module(config);
-  const scopeParams = _getScopeParams(config, module);
+  const scopeParams = _getScopeParams(config, module, scope);
+  const script = _createScript(config, options, scope);
 
   try {
-    if (config.useSandbox) {
+    if (useSandbox) {
       script.runInContext(_createSandbox(config), options)(...scopeParams);
     } else {
       script.runInThisContext(options)(...scopeParams);
@@ -166,6 +168,8 @@ function _runScript(config, script, options) {
   return module;
 }
 
+
+
 /**
  * Given a config object, evaluate the given content in a sandbox according to the config.  Return the module.
  *
@@ -176,8 +180,7 @@ function evaluate(config) {
   const time = process.hrtime();
   const _config = _parseConfig(config);
   const options = _createOptions(_config);
-  const script = _createScript(_config, options);
-  const module = _runScript(_config, script, options);
+  const module = _runScript(_config, options);
 
   emitter.emit('evaluated', new emitter.Evaluated({
     target:module.filename,

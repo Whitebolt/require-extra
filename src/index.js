@@ -4,7 +4,7 @@
 const settings = require('./settings');
 const Resolver = require('./resolver');
 const tryModule = require('./try');
-const {requireAsync, resolveModulePath} = require('./require');
+const {requireAsync, resolveModulePath, syncRequire} = require('./require');
 const importDirectory = require('./import');
 const {reflect, deprecated, promiseLibraryWrap} = require('./util');
 const Module = require('./Module');
@@ -26,6 +26,7 @@ exported.workspace = (id, value)=>{
   return workspaces.set(id, value);
 };
 exported.cache = cache;
+exported.sync = syncRequire;
 
 reflect(settings, exported, ['get', 'set', 'delete']);
 reflect(emitter, exported, ['on', 'once', 'remove', 'Error', 'Loaded', 'Event', 'Evaluated']);
