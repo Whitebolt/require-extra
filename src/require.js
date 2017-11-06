@@ -153,7 +153,7 @@ function _createModuleConfig(filename, content, userResolver) {
     content,
     filename,
     includeGlobals:true,
-    syncRequire,
+    syncRequire:_syncRequire(_syncRequire),
     resolveModulePath,
     basedir: path.dirname(filename)
   }, userResolver.export);
@@ -325,6 +325,14 @@ function syncRequire(...params) {
   const filename = resolveModulePathSync(userResolver, moduleId, true);
   return _loadModuleSync(filename, userResolver);
 }
+
+function _syncRequire(userResolver={}) {
+  return (...params)=>{
+    const [_userResolver, moduleId] = _parseRequireParams(params);
+    return syncRequire(Object.assign({}, userResolver, _userResolver), moduleId);
+  };
+}
+
 
 module.exports = {
   requireAsync, requireSync, resolveModulePath, syncRequire

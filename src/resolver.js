@@ -12,9 +12,9 @@ const allowedOptions = [
   'pathFilter', 'paths', 'moduleDirectory', 'preserveSymlinks'
 ];
 
-const otherOptions = ['parent'];
+const otherOptions = ['parent', 'useSandbox', 'useSyncRequire', 'merge'];
 
-const toExport = ['moduleDirectory', 'parent'];
+const toExport = ['moduleDirectory', 'parent', 'useSandbox', 'useSyncRequire', 'merge'];
 
 
 function _importOptions(instance, options={}) {

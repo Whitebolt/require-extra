@@ -33,25 +33,22 @@ function _getParent(config) {
 function _getRequire(config) {
   if (!config.syncRequire && !config.resolveModulePath) return requireLike(config.filename);
 
-  const basedir = config.basedir||path.dirname(config.filename);
-  const _resolveResolver = {basedir};
-  const _requireResolver = {basedir, parent:config.filename};
-  const asyncRequire = require('./require').requireAsync;
-
-  const _require = function(moduleId) {
-    return config.syncRequire(_requireResolver, moduleId);
-  };
-  _require.resolve = function(moduleId) {
-    return config.resolveModulePath(_resolveResolver, moduleId);
-  };
-  _require.async = function (...params) {
-    return asyncRequire(_resolveResolver, ...params);
+  const _requireResolver = {basedir:config.basedir||path.dirname(config.filename), parent:config.filename};
+  const requireX = require('./index');
+  const _mergeResolver = resolver=>Object.assign({}, _requireResolver, resolver);
+  const _getResolver = (params, resolverId=0)=>{
+    if (isString(params[resolverId]) || Array.isArray(params[resolverId])) return _requireResolver;
+    return _mergeResolver(params.shift());
   };
 
-  _require.import = require('./import');
-  _require.try = require('./try');
-
-  return _require;
+  return Object.assign(function(...params) {
+    return config.syncRequire(_getResolver(params), ...params);
+  }, requireX, {
+    resolve: (...params)=>config.resolveModulePath(_getResolver(params), ...params),
+    async: (...params)=>requireX.requireAsync(_getResolver(moduleId), ...params),
+    native: moduleId=>requireLike(config.filename)(moduleId),
+    import: (dirPath, options, callback)=>requireX.import(dirPath, _mergeResolver(options), callback)
+  });
 }
 
 /**
