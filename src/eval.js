@@ -8,6 +8,7 @@ const cache = require('./cache');
 const Module = require('./Module');
 const workspaces = require('./workspaces');
 const emitter = require('./events');
+const settings = require('./settings');
 
 const proxiedGlobal = require('semver').gt(process.versions.node, '8.3.0');
 
@@ -32,6 +33,7 @@ function _parseConfig(config) {
     scope:{},
     includeGlobals:false,
     proxyGlobal:true,
+    useSandbox: !!settings.get('useSandbox'),
     workspace: [workspaces.DEFAULT_WORKSPACE]
   }, config);
 
@@ -101,18 +103,15 @@ function wrap(content, scope) {
 }
 
 /**
- * Run the given script in the given sandbox, according to the given config and options.
+ * Get scoped parameters to pass to wrap function.
  *
  * @private
- * @param {Object} config           Config to use.
- * @param {VMScript} script         Script to run.
- * @param {Object|Proxy} sandbox    Sandbox to run in.
- * @param {Object} options          Options for running.
- * @returns {Module}                The module created.
+ * @param {Object} config   The config options.
+ * @param {Module} module   The module.
+ * @returns {Array.<*>}     Parameters.
  */
-function _runScript(config, script, sandbox, options) {
-  const module = new Module(config);
-  const scopeParams = [
+function _getScopeParams(config, module) {
+  return [
     module.exports,
     module.require,
     module,
@@ -120,17 +119,46 @@ function _runScript(config, script, sandbox, options) {
     config.basedir || path.dirname(module.filename),
     ...values(config.scope)
   ];
+}
+
+/**
+ * Handle run errors.
+ *
+ * @private
+ * @param {Error} error       The error thrown.
+ * @param {Module} module     The module.
+ */
+function _runError(error, module) {
+  const _error = new emitter.Error({
+    target:module.filename,
+    source:(module.parent || module).filename,
+    error
+  });
+  emitter.emit('error', _error);
+  if (!_error.ignore()) throw error;
+}
+
+/**
+ * Run the given script in the given sandbox, according to the given config and options.
+ *
+ * @private
+ * @param {Object} config           Config to use.
+ * @param {VMScript} script         Script to run.
+ * @param {Object} options          Options for running.
+ * @returns {Module}                The module created.
+ */
+function _runScript(config, script, options) {
+  const module = new Module(config);
+  const scopeParams = _getScopeParams(config, module);
 
   try {
-    script.runInContext(sandbox, options)(...scopeParams);
+    if (config.useSandbox) {
+      script.runInContext(_createSandbox(config), options)(...scopeParams);
+    } else {
+      script.runInThisContext(options)(...scopeParams);
+    }
   } catch(error) {
-    const _error = new emitter.Error({
-      target:module.filename,
-      source:(module.parent || module).filename,
-      error
-    });
-    emitter.emit('error', _error);
-    if (!_error.ignore()) throw error;
+    _runError(error, module);
   }
 
   module.loaded = true;
@@ -148,9 +176,8 @@ function evaluate(config) {
   const time = process.hrtime();
   const _config = _parseConfig(config);
   const options = _createOptions(_config);
-  const sandbox = _createSandbox(_config);
   const script = _createScript(_config, options);
-  const module = _runScript(config, script, sandbox, options);
+  const module = _runScript(_config, script, options);
 
   emitter.emit('evaluated', new emitter.Evaluated({
     target:module.filename,
