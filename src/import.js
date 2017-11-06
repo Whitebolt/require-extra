@@ -7,6 +7,7 @@ const {
   isFunction, intersection, uniq, readDir, makeArray, flattenDeep,
   getCallingFileName, getCallingDir
 } = require('./util');
+const emitter = require('./events');
 
 /**
  * Get a list of files in the directory.
@@ -162,15 +163,16 @@ function _importDirectoryOptionsParser(options={}) {
  * @returns {Promise.<Array>}                 The module definitions.
  */
 async function _importDirectoryModules(dirPath, options) {
-  const caller = getCallingFileName();
+  const source = getCallingFileName();
   const require = (options.useSyncRequire ? requireSync : requireAsync);
   const files = await filesInDirectories(makeArray(dirPath), options);
-  const modDefs = await Promise.all(files.map(async (fileName)=> {
-    if (_canImport(fileName, caller, options)) {
+  const modDefs = await Promise.all(files.map(async (target)=> {
+    if (_canImport(target, source, options)) {
       try {
-        return [fileName, await require(options, fileName)];
-      } catch(err) {
-
+        return [target, await require(options, target)];
+      } catch(error) {
+        emitter.emit('error', new emitter.Error({target, source, error}));
+        throw error;
       }
     }
   }));

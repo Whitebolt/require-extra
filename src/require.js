@@ -76,12 +76,28 @@ function resolveModulePathSync(userResolver, moduleName) {
  * Read text from a file and handle any errors.
  *
  * @private
- * @param {string} fileName
- * @param {boolean} [sync=false]
- * @returns {Promise.<string>|string}
+ * @param {string} target               The target to load.
+ * @param {string} source               The loading source path.
+ * @param {boolean} [sync=false]        Use sync method?
+ * @returns {Promise.<string>|string}   The results.
  */
-function _loadModuleText(fileName, sync=false) {
-  return sync?readFileSync(fileName, 'utf-8'):readFile(fileName, 'utf8');
+function _loadModuleText(target, source, sync=false) {
+  const time = process.hrtime();
+
+  const loaded = txt=>{
+    try {
+      emitter.emit('loaded', new emitter.Loaded({target, duration: process.hrtime(time), source}));
+      return txt;
+    } catch (error) { return loadError(error); }
+  };
+
+  const loadError = error=>{
+    emitter.emit('error', new emitter.Error({target, source, error}));
+    throw error;
+  };
+
+  if (sync) return loaded(readFileSync(target, 'utf-8'));
+  return readFile(target, 'utf8').then(loaded, loadError);
 }
 
 /**
@@ -153,7 +169,7 @@ function _createModuleConfig(filename, content, userResolver) {
  */
 async function _loadModule(filename, userResolver) {
   if (!cache.has(filename)) {
-    cache.set(filename, _evalModuleText(filename, await _loadModuleText(filename), userResolver));
+    cache.set(filename, _evalModuleText(filename, await _loadModuleText(filename, userResolver.parent), userResolver));
   }
   return cache.get(filename).exports;
 }
@@ -169,7 +185,7 @@ async function _loadModule(filename, userResolver) {
  */
 function _loadModuleSync(filename, userResolver) {
   if (!cache.has(filename)) {
-    cache.set(filename, _evalModuleText(filename, _loadModuleText(filename, true), userResolver));
+    cache.set(filename, _evalModuleText(filename, _loadModuleText(filename, userResolver.parent, true), userResolver));
   }
   return cache.get(filename).exports;
 }

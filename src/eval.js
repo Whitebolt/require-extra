@@ -121,7 +121,16 @@ function _runScript(config, script, sandbox, options) {
     ...values(config.scope)
   ];
 
-  script.runInContext(sandbox, options)(...scopeParams);
+  try {
+    script.runInContext(sandbox, options)(...scopeParams);
+  } catch(error) {
+    emitter.emit('error', new emitter.Error({
+      target:module.filename,
+      source:(module.parent || module).filename,
+      error
+    }));
+    throw error;
+  }
 
   module.loaded = true;
 

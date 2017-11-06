@@ -28,7 +28,7 @@ exported.workspace = (id, value)=>{
 exported.cache = cache;
 
 reflect(settings, exported, ['get', 'set', 'delete']);
-reflect(emitter, exported, ['on', 'once', 'remove']);
+reflect(emitter, exported, ['on', 'once', 'remove', 'Error', 'Loaded', 'Event', 'Evaluated']);
 deprecated('getModule', 'try', exported);
 deprecated('importDirectory', 'import', exported);
 

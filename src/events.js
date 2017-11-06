@@ -28,6 +28,30 @@ class Event {
   }
 }
 
+class Error_Event extends Event {
+  constructor(config) {
+    super({type:'error', target:config.target});
+    this.source = config.source;
+    this.error = config.error;
+  }
+
+  get source() {
+    return Private.get(this, 'source');
+  }
+
+  set source(value) {
+    return Private.set(this, 'source', value);
+  }
+
+  get error() {
+    return Private.get(this, 'error');
+  }
+
+  set error(value) {
+    return Private.set(this, 'error', value);
+  }
+}
+
 class Loaded_Event extends Event {
   constructor(config) {
     super({type:'loaded', target:config.target});
@@ -104,6 +128,10 @@ class Events {
 
   get Event() {
     return Event;
+  }
+
+  get Error() {
+    return Error_Event;
   }
 
   get Loaded() {
