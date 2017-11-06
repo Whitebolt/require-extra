@@ -35,13 +35,13 @@ class Resolver {
   }
 
   resolve(moduleId, dir, cb) {
-    const resolver = settings.get('resolve-module');
+    const resolver = settings.get('resolveModule');
     const options = Object.assign(pick(this, allowedOptions), {basedir:dir || __dirname});
     return (cb ? resolver(moduleId, options, cb) : promisify(resolver)(moduleId, options));
   }
 
   resolveSync(moduleId, dir) {
-    const resolver = settings.get('resolve-module');
+    const resolver = settings.get('resolveModule');
     const options = Object.assign(pick(this, allowedOptions), {basedir:dir || __dirname});
     return resolver.sync(moduleId, options);
   }
@@ -88,7 +88,7 @@ class Resolver {
   }
 
   isCoreModule(moduleId) {
-    return !!settings.get('resolve-module').isCore(moduleId);
+    return !!settings.get('resolveModule').isCore(moduleId);
   }
 
   /**

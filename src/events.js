@@ -35,6 +35,11 @@ class Error_Event extends Event {
     this.error = config.error;
   }
 
+  ignore(ignored) {
+    if (ignored !== undefined) Private.set(this, 'ignore', !!ignored);
+    return !!Private.get(this, 'ignore');
+  }
+
   get source() {
     return Private.get(this, 'source');
   }
@@ -112,9 +117,7 @@ class Events {
   }
 
   emit(eventName, ...data) {
-    [...(listeners.get(eventName) || [])].forEach(listener=>{
-      setImmediate(()=>listener(...data));
-    });
+    [...(listeners.get(eventName) || [])].forEach(listener=>listener(...data));
   }
 
   remove(listener) {

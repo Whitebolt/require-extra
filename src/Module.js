@@ -36,6 +36,7 @@ function _getRequire(config) {
   const basedir = config.basedir||path.dirname(config.filename);
   const _resolveResolver = {basedir};
   const _requireResolver = {basedir, parent:config.filename};
+  const asyncRequire = require('./require').requireAsync;
 
   const _require = function(moduleId) {
     return config.syncRequire(_requireResolver, moduleId);
@@ -43,7 +44,12 @@ function _getRequire(config) {
   _require.resolve = function(moduleId) {
     return config.resolveModulePath(_resolveResolver, moduleId);
   };
-  _require.cache = cache.source;
+  _require.async = function (...params) {
+    return asyncRequire(_resolveResolver, ...params);
+  };
+
+  _require.import = require('./import');
+  _require.try = require('./try');
 
   return _require;
 }

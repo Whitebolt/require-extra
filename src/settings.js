@@ -25,7 +25,7 @@ class RequireExtraSettings extends Map {
     super(...params);
     singleton = this;
     Object.keys(config).forEach(key=>this.set(key, config[key]));
-    this.set('resolve-module', require('resolve'));
+    this.set('resolveModule', require('resolve'));
   }
 
   /**

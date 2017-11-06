@@ -124,12 +124,13 @@ function _runScript(config, script, sandbox, options) {
   try {
     script.runInContext(sandbox, options)(...scopeParams);
   } catch(error) {
-    emitter.emit('error', new emitter.Error({
+    const _error = new emitter.Error({
       target:module.filename,
       source:(module.parent || module).filename,
       error
-    }));
-    throw error;
+    });
+    emitter.emit('error', _error);
+    if (!_error.ignore()) throw error;
   }
 
   module.loaded = true;

@@ -114,7 +114,9 @@
       ".json",
       ".node"
     ],
-    "moduleDirectory": "node_modules"
+    "moduleDirectory": "node_modules",
+    "mergeImports": false,
+    "useSyncRequire": false
   },
   "scripts": {
     "test": "./gulpfile.js test"

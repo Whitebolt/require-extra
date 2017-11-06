@@ -141,11 +141,10 @@ function _importDirectoryOptionsParser(options={}) {
   const _options = Object.assign({
     imports: {},
     onload: options.callback,
-    extension: settings.get('extensions')
-  }, options, {
-    useSyncRequire: !!options.useSyncRequire,
-    merge: !!options.merge
-  });
+    extension: settings.get('extensions'),
+    useSyncRequire: settings.get('useSyncRequire'),
+    merge: settings.get('mergeImports')
+  }, options);
 
   if (options.callback) console.warn(`The options.callback method is deprecated, please use options.onload() instead. This being used in ${getCallingFileName()}`);
 
@@ -171,8 +170,9 @@ async function _importDirectoryModules(dirPath, options) {
       try {
         return [target, await require(options, target)];
       } catch(error) {
-        emitter.emit('error', new emitter.Error({target, source, error}));
-        throw error;
+        const _error = new emitter.Error({target, source, error});
+        emitter.emit('error', _error);
+        if (!_error.ignore()) throw error;
       }
     }
   }));

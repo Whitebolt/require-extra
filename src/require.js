@@ -92,8 +92,9 @@ function _loadModuleText(target, source, sync=false) {
   };
 
   const loadError = error=>{
-    emitter.emit('error', new emitter.Error({target, source, error}));
-    throw error;
+    const _error = new emitter.Error({target, source, error});
+    emitter.emit('error', _error);
+    if (!_error.ignore()) throw error;
   };
 
   if (sync) return loaded(readFileSync(target, 'utf-8'));

@@ -1,7 +1,8 @@
 'use strict';
 
+const settings = require('./settings');
 const {isBoolean, makeArray} = require('./util');
-const {requireAsync, requireSync} = require('./require');
+const {requireAsync, syncRequire} = require('./require');
 
 /**
  * Load a module or return a default value.  Can take an array to try.  Will load module asynchronously.
@@ -13,11 +14,11 @@ const {requireAsync, requireSync} = require('./require');
  * @returns {Promise.<*>}
  */
 function tryModule(useSync, modulePath, defaultReturnValue) {
-  if (!isBoolean(useSync)) [defaultReturnValue, modulePath, useSync] = [modulePath, useSync, false];
+  if (!isBoolean(useSync)) [defaultReturnValue, modulePath, useSync] = [modulePath, useSync, settings.get('useSyncRequire')];
   if (!modulePath) return defaultReturnValue;
   modulePath = makeArray(modulePath);
 
-  const _require = (useSync ? requireSync : requireAsync);
+  const _require = (useSync ? syncRequire : requireAsync);
   return _tryModule(modulePath, defaultReturnValue, _require);
 }
 
