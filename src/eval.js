@@ -84,7 +84,12 @@ function _createOptions(config) {
 function _createScript(config, options, scope={}) {
   if (!isString(config.content)) return config.content;
   const stringScript = wrap(config.content.replace(/^\#\!.*/, ''), scope);
-  return new vm.Script(stringScript, options);
+  try {
+    return new vm.Script(stringScript, options);
+  } catch(error) {
+    _runError(error, config);
+    throw err;
+  }
 }
 
 /**
