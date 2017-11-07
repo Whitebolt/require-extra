@@ -1,155 +1,76 @@
 'use strict';
 
-const listeners = new Map();
-const {makeArray, isString} = require('./util');
-const Private = require("./Private");
+var Private = require("./Private");
+var EventEmitter = require('events');
+var emitter = new EventEmitter();
 
-
-class Event {
-  constructor(config) {
-    this.type = config.type;
-    this.target = config.target;
+function _setFreeze(instance) {
+  var freezer = {freeze:false};
+  if (!instance.freeze) {
+    instance.freeze = true;
+    freezer.freeze = true;
   }
+  return freezer;
+}
 
-  get target() {
-    return Private.get(this, 'target');
-  }
-
-  set target(value) {
-    return Private.set(this, 'target', value);
-  }
-
-  get type() {
-    return Private.get(this, 'type');
-  }
-
-  set type(value) {
-    return Private.set(this, 'type', value);
+function _doFreeze(instance, freezer) {
+  if (freezer.freeze) {
+    delete instance.freeze;
+    if (Object.freeze) Object.freeze(instance);
   }
 }
 
-class Error_Event extends Event {
-  constructor(config) {
-    super({type:'error', target:config.target});
-    this.source = config.source;
-    this.error = config.error;
-  }
-
-  ignore(ignored) {
-    if (ignored !== undefined) Private.set(this, 'ignore', !!ignored);
-    return !!Private.get(this, 'ignore');
-  }
-
-  get source() {
-    return Private.get(this, 'source');
-  }
-
-  set source(value) {
-    return Private.set(this, 'source', value);
-  }
-
-  get error() {
-    return Private.get(this, 'error');
-  }
-
-  set error(value) {
-    return Private.set(this, 'error', value);
-  }
+function Event(config) {
+  var freezer = _setFreeze(this);
+  this.type = config.type || 'event';
+  this.target = config.target;
+  _doFreeze(this, freezer);
 }
 
-class Loaded_Event extends Event {
-  constructor(config) {
-    super({type:'loaded', target:config.target});
-    this.source = config.source;
-    this.duration = config.duration;
-  }
+function Error_Event(config) {
+  var freezer = _setFreeze(this);
+  Event.call(this, config);
+  this.type = 'error';
+  this.source = config.source;
+  this.error = config.error;
 
-  get source() {
-    return Private.get(this, 'source');
-  }
-
-  set source(value) {
-    return Private.set(this, 'source', value);
-  }
-
-  get duration() {
-    return Private.get(this, 'duration');
-  }
-
-  set duration(value) {
-    return Private.set(this, 'duration', value);
-  }
+  var _ignored = false;
+  this.ignored = function(ignored) {
+    if (ignored !== undefined) _ignored = !!ignored;
+    return _ignored;
+  };
+  _doFreeze(this, freezer);
 }
 
-class Evaluated_Event extends Loaded_Event {
-  constructor(config) {
-    super(config);
-    this.type = 'evaluated';
-    this.cacheSize = config.cacheSize;
-  }
+Error_Event.prototype = Object.create(Event.prototype);
+Error_Event.prototype.constructor = Error_Event;
 
-  get cacheSize() {
-    return Private.get(this, 'cacheSize');
-  }
-
-  set cacheSize(value) {
-    return Private.set(this, 'cacheSize', value);
-  }
+function Loaded_Event(config) {
+  var freezer = _setFreeze(this);
+  Event.call(this, config);
+  this.type = 'loaded';
+  this.source = config.source;
+  this.duration = config.duration;
+  _doFreeze(this, freezer);
 }
 
-class Events {
-  on(eventName, listener) {
-    const unsubscribes = [];
-    makeArray(eventName).forEach(eventName=>{
-      if (!listeners.has(eventName)) listeners.set(eventName, new Set());
-      listeners.get(eventName).add(listener);
-      unsubscribes.push(()=>listeners.get(eventName).delete(listener));
-    });
+Loaded_Event.prototype = Object.create(Event.prototype);
+Loaded_Event.prototype.constructor = Loaded_Event;
 
-    const unsubscribe = function() {
-      unsubscribes.forEach(unsubscribe=>unsubscribe());
-    };
-
-    return unsubscribe;
-  }
-
-  once(eventName, listener) {
-    let unsubscribe = this.on(eventName, (...data)=>{
-      listener(...data);
-      unsubscribe();
-      unsubscribe = undefined;
-    });
-    return unsubscribe;
-  }
-
-  emit(eventName, ...data) {
-    [...(listeners.get(eventName) || [])].forEach(listener=>listener(...data));
-  }
-
-  remove(listener) {
-    if (isString(listener) && listeners.has(listener)) return listeners.get(listener).clear();
-    listeners.forEach(listeners=>{
-      listeners.forEach(_listener=>{
-        if (_listener === listener) listeners.delete(listener);
-      })
-    });
-  }
-
-  get Event() {
-    return Event;
-  }
-
-  get Error() {
-    return Error_Event;
-  }
-
-  get Loaded() {
-    return Loaded_Event;
-  }
-
-  get Evaluated() {
-    return Evaluated_Event;
-  }
+function Evaluated_Event(config) {
+  var freezer = _setFreeze(this);
+  Loaded_Event.call(this, config);
+  this.type = 'evaluated';
+  this.cacheSize = config.cacheSize;
+  _doFreeze(this, freezer);
 }
 
-module.exports = new Events();
+Evaluated_Event.prototype = Object.create(Loaded_Event.prototype);
+Evaluated_Event.prototype.constructor = Evaluated_Event;
+
+emitter.Event = Event;
+emitter.Error = Error_Event;
+emitter.Loaded = Loaded_Event;
+emitter.Evaluated = Evaluated_Event;
+
+module.exports = emitter;

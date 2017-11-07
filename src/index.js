@@ -1,56 +1,78 @@
 /* jshint node: true */
 'use strict';
 
-const settings = require('./settings');
-const Resolver = require('./resolver');
-const tryModule = require('./try');
 const {requireAsync, resolveModulePath, syncRequire} = require('./require');
-const importDirectory = require('./import');
 const {reflect, deprecated, promiseLibraryWrap} = require('./util');
 const Module = require('./Module');
-const workspaces = require('./workspaces');
-const emitter = require('./events');
+
 const cache = require('./cache');
 
-const exported = function(...params){
-  return requireAsync(...params);
-};
+function _exportEmitter(exported) {
+  const emitter = require('./events');
+  reflect(
+    emitter,
+    exported, [
+      'addListener', 'emit', 'eventNames', 'getMaxListeners', 'listenerCount', 'listeners', 'on', 'once',
+      'prependListener', 'prependOnceListener', 'removeAllListeners', 'removeListener', 'setMaxListeners',
+      'Error', 'Event', 'Loaded', 'Evaluated'
+    ]
+  );
 
-exported.resolve = promiseLibraryWrap(resolveModulePath, settings);
-exported.try = promiseLibraryWrap(tryModule, settings);
-exported.getResolver = Resolver.getResolver;
-exported.Resolver = Resolver;
-exported.import = promiseLibraryWrap(importDirectory, settings);
-exported.workspace = (id, value)=>{
-  if (!value) return workspaces.exportedGet(id);
-  return workspaces.set(id, value);
-};
-exported.cache = cache;
-exported.sync = syncRequire;
+  return emitter;
+}
 
-reflect(settings, exported, ['get', 'delete', 'emit']);
-reflect(emitter, exported, ['Error', 'Loaded', 'Event', 'Evaluated']);
+function _exportSettings(exported) {
+  const settings = require('./settings');
+  reflect(settings, exported, ['get', 'delete']);
+  exported.set = (...params)=>{
+    settings.set(...params);
+    return exported;
+  };
 
-exported.on = (...params)=>{
-  const unsubscribe = emitter.on(...params);
-  return Object.assign(unsubscribe, exported);
-};
-exported.once = (...params)=>{
-  const unsubscribe = emitter.once(...params);
-  return Object.assign(unsubscribe, exported);
-};
-exported.remove = (...params)=>{
-  emitter.remove(...params);
+  return settings;
+}
+
+function _exportWorspaces(exported) {
+  const workspaces = require('./workspaces');
+  exported.workspace = (id, value)=>{
+    if (!value) return workspaces.exportedGet(id);
+    return workspaces.set(id, value);
+  };
+
+  return workspaces;
+}
+
+function _exportRequireMethods(exported, settings) {
+  const Resolver = require('./resolver');
+  const tryModule = require('./try');
+  const importDirectory = require('./import');
+
+  exported.resolve = promiseLibraryWrap(resolveModulePath, settings);
+  exported.try = promiseLibraryWrap(tryModule, settings);
+  exported.getResolver = Resolver.getResolver;
+  exported.Resolver = Resolver;
+  exported.import = promiseLibraryWrap(importDirectory, settings);
+
+  exported.cache = cache;
+  exported.sync = syncRequire;
+}
+
+function _deprecate(exported) {
+  deprecated('getModule', 'try', exported);
+  deprecated('importDirectory', 'import', exported);
+}
+
+function _init() {
+  const exported = function(...params) {return requireAsync(...params);};
+  const settings = _exportSettings(exported);
+
+  _exportWorspaces(exported);
+  _exportEmitter(exported);
+  _exportRequireMethods(exported, settings);
+  _deprecate(exported);
+
   return exported;
-};
-exported.set = (...params)=>{
-  settings.set(...params);
-  return exported;
-};
-
-
-deprecated('getModule', 'try', exported);
-deprecated('importDirectory', 'import', exported);
+}
 
 /**
  * NodeJs module loading with an asynchronous flavour
@@ -59,7 +81,7 @@ deprecated('importDirectory', 'import', exported);
  * @version 0.4.0
  * @type {function}
  */
-module.exports = exported;
+module.exports = _init();
 
 try {
   __module.exports = module.exports;

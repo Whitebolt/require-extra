@@ -137,8 +137,11 @@ util.deprecated = function deprecated(from, to, exported) {
  * @param {Array.<string>|string} methods    Method(s) to reflect.
  */
 util.reflect = function reflect(from, to, methods) {
-  util.makeArray(methods).forEach(property=>to[property] = from[property].bind(from));
+  util.makeArray(methods).forEach(property=>{
+    to[property] = (util.isFunction(from[property])?from[property].bind(from):from[property]);
+  });
 };
+
 
 /**
  * Lop a path to its parent adding a directory on.
