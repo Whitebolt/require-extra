@@ -7,8 +7,11 @@ const Resolver = require('./resolver');
 const cache = require('./cache');
 const Module = require('./Module');
 const path = require('path');
-const {isString, readFile, readFileSync, getCallingDir, promisify} = require('./util');
+const {isString, readFile, readFileSync, getCallingDir, promisify, getRequire} = require('./util');
 const emitter = require('./events');
+const detective = require('detective');
+
+const fileCache = new Map();
 
 const xIsJson = /\.json$/;
 const xIsJsonOrNode = /\.(?:json|node)$/;
@@ -97,8 +100,8 @@ function _loadModuleText(target, source, sync=false) {
     if (!_error.ignore()) throw error;
   };
 
-  if (sync) return loaded(readFileSync(target, 'utf-8'));
-  return readFile(target, 'utf8').then(loaded, loadError);
+  if (sync) return loaded(readFileSync(target, 'utf-8', fileCache));
+  return readFile(target, 'utf8', fileCache).then(loaded, loadError);
 }
 
 /**
@@ -114,9 +117,10 @@ function _evalModuleText(filename, content, userResolver) {
   if (content === undefined) return;
 
   const moduleConfig = _createModuleConfig(filename, content, _getResolve(userResolver));
+  let module;
   if (xIsJsonOrNode.test(filename)) {
     const time = process.hrtime();
-    const module = new Module(moduleConfig);
+    module = new Module(moduleConfig);
 
     if (xIsJson.test(filename)) {
       module.exports = JSON.parse(content);
@@ -132,10 +136,32 @@ function _evalModuleText(filename, content, userResolver) {
       duration:process.hrtime(time),
       cacheSize: cache.size
     }));
-
-    return module;
   } else {
-    return _eval(moduleConfig);
+    cacher(moduleConfig.content, moduleConfig.filename, moduleConfig.basedir, userResolver);
+    module = _eval(moduleConfig);
+  }
+
+  if (fileCache.has(filename)) fileCache.delete(filename);
+  return module;
+}
+
+function cacher(content, filename, basedir, userResolver) {
+  try {
+    detective(content).map(moduleId=>{
+      if (!userResolver.isCoreModule(moduleId)) {
+        userResolver.resolve(moduleId, basedir).then(modulePath=>{
+          if (!cache.has(modulePath) && !fileCache.has(modulePath)) {
+            _loadModuleText(modulePath, filename).then(content=>{
+              if (!xIsJsonOrNode.test(filename)) {
+                return cacher(content, modulePath, path.dirname(modulePath), userResolver)
+              }
+            });
+          }
+        }, err=>true);
+      }
+    });
+  } catch(err) {
+
   }
 }
 
@@ -320,7 +346,7 @@ function requireAsync(userResolver, moduleId, callback) {
  */
 function syncRequire(...params) {
   const [userResolver, moduleId] = _parseRequireParams(params);
-  if (userResolver.isCoreModule(moduleId)) return __require(moduleId);
+  if (userResolver.isCoreModule(moduleId)) return getRequire()(moduleId);
   userResolver.basedir = userResolver.basedir || userResolver.dir;
   const filename = resolveModulePathSync(userResolver, moduleId, true);
   return _loadModuleSync(filename, userResolver);

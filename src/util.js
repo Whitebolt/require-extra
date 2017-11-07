@@ -172,7 +172,56 @@ util.createLopAddIterator = function* createLopAddIterator(path, addition) {
 };
 
 util.readDir = util.promisify(fs.readdir);
-util.readFile = util.promisify(fs.readFile);
-util.readFileSync = fs.readFileSync;
+
+const readFileCallbacks = new Map();
+
+util.readFile = function readFile(filepath, encoding, cache) {
+  return new Promise((resolve, reject)=>{
+    if (cache.has(filepath)) {
+      if (cache.get(filepath) !== true) {
+        return cache.get(filepath);
+      }
+      readFileCallbacks.get(filepath).add((err, data)=>{
+        if (err) return reject(err);
+        return resolve(data);
+      });
+    } else {
+      const callbacks = new Set();
+      cache.set(filepath, true);
+      readFileCallbacks.set(filepath, callbacks);
+      const contents = [];
+      fs.createReadStream(filepath, {encoding:null}).on('data', chunk=>{
+        contents.push(chunk);
+      }).on('end', ()=>{
+        const data = Buffer.concat(contents).toString();
+        cache.set(filepath, data);
+        if (callbacks.size) callbacks.forEach(callback=>callback(null, data));
+        callbacks.clear();
+        readFileCallbacks.delete(filepath);
+        resolve(data);
+      }).on('error', error=>{
+        if (callbacks.size) callbacks.forEach(callback=>callback(error, null));
+        callbacks.clear();
+        readFileCallbacks.delete(filepath);
+        reject(error)
+      });
+    }
+  });
+};
+
+util.readFileSync = function readFileSync(filepath, encoding, cache) {
+  if (cache.has(filepath) && (cache.get(filepath) !== true)) return cache.get(filepath);
+  const data = fs.readFileSync(filepath, encoding);
+  cache.set(filepath, data);
+  return data;
+};
+
+util.getRequire = function getRequire() {
+  try {
+    return __require;
+  } catch(err) {
+    return require;
+  }
+};
 
 module.exports = util;

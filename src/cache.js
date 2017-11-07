@@ -1,6 +1,7 @@
 'use strict';
 
 const Module = require('module');
+const {getRequire} = require('./util');
 
 /**
  * Reference to the global module cache.  If not found return a new object created from a null prototype.
@@ -9,9 +10,9 @@ const Module = require('module');
  */
 const globalCache = (()=>{
   try {
-    return __require.cache;
+    return getRequire().cache;
   } catch (err) {
-    return require.cache || Object.create(null);
+    return Object.create(null);
   }
 })();
 
