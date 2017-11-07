@@ -28,8 +28,27 @@ exported.workspace = (id, value)=>{
 exported.cache = cache;
 exported.sync = syncRequire;
 
-reflect(settings, exported, ['get', 'set', 'delete']);
-reflect(emitter, exported, ['on', 'once', 'remove', 'Error', 'Loaded', 'Event', 'Evaluated']);
+reflect(settings, exported, ['get', 'delete', 'emit']);
+reflect(emitter, exported, ['Error', 'Loaded', 'Event', 'Evaluated']);
+
+exported.on = (...params)=>{
+  const unsubscribe = emitter.on(...params);
+  return Object.assign(unsubscribe, exported);
+};
+exported.once = (...params)=>{
+  const unsubscribe = emitter.once(...params);
+  return Object.assign(unsubscribe, exported);
+};
+exported.remove = (...params)=>{
+  emitter.remove(...params);
+  return exported;
+};
+exported.set = (...params)=>{
+  settings.set(...params);
+  return exported;
+};
+
+
 deprecated('getModule', 'try', exported);
 deprecated('importDirectory', 'import', exported);
 

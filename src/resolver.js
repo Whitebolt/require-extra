@@ -3,6 +3,7 @@
 const settings = require('./settings');
 const {uniq, flattenDeep, pick, promisify, makeArray, without, getCallingFileName} = require('./util');
 const Private = require("./Private");
+const path = require('path');
 
 const _resolveLike = ['resolve', 'extensions', 'getState', 'isCoreModule', 'addExtenstions', 'removeExtensions'];
 Object.freeze(_resolveLike);
@@ -15,6 +16,8 @@ const allowedOptions = [
 const otherOptions = ['parent', 'useSandbox', 'useSyncRequire', 'merge', 'scope'];
 
 const toExport = ['moduleDirectory', 'parent', 'useSandbox', 'useSyncRequire', 'merge', 'scope'];
+
+const cache = new Map();
 
 
 function _importOptions(instance, options={}) {
@@ -29,21 +32,62 @@ function _importOptions(instance, options={}) {
   Object.assign(instance, pick(_options, allowedOptions), pick(_options, otherOptions));
 }
 
+function has(moduleId, moduleDirectory, basedir) {
+  return (
+    cache.has(moduleId) &&
+    cache.get(moduleId).has(moduleDirectory) &&
+    cache.get(moduleId).get(moduleDirectory).has(basedir)
+  );
+}
+
+function get(moduleId, moduleDirectory, basedir) {
+  if (!has(moduleId, moduleDirectory, basedir)) return;
+  return cache.get(moduleId).get(moduleDirectory).get(basedir);
+}
+
+function set(moduleId, moduleDirectory, basedir, resolved) {
+  if (!cache.has(moduleId)) cache.set(moduleId, new Map());
+  if (!cache.get(moduleId).has(moduleDirectory)) cache.get(moduleId).set(moduleDirectory, new Map());
+  cache.get(moduleId).get(moduleDirectory).set(basedir, resolved);
+
+  return resolved;
+}
+
 class Resolver {
   constructor(options) {
     _importOptions(this, options);
+    if (!this.basedir && settings.has('parent')) {
+      this.basedir = path.dirname(settings.get('parent').filename || settings.get('parent'));
+    }
   }
 
   resolve(moduleId, dir, cb) {
-    const resolver = settings.get('resolveModule');
     const options = Object.assign(pick(this, allowedOptions), {basedir:dir || __dirname});
-    return (cb ? resolver(moduleId, options, cb) : promisify(resolver)(moduleId, options));
+    if (has(moduleId, options.moduleDirectory, options.basedir)) {
+      const resolved = get(moduleId, options.moduleDirectory, options.basedir);
+      if (!cb) return Promise.resolve(resolved);
+      cb(resolved);
+    } else {
+      const resolver = settings.get('resolveModule');
+      if (cb) {
+        resolver(moduleId, options, resolved=>{
+          cb(set(moduleId, options.moduleDirectory, options.basedir, resolved));
+        });
+      } else {
+        return promisify(resolver)(moduleId, options).then(resolved=>{
+          return set(moduleId, options.moduleDirectory, options.basedir, resolved);
+        });
+      }
+    }
   }
 
   resolveSync(moduleId, dir) {
-    const resolver = settings.get('resolveModule');
     const options = Object.assign(pick(this, allowedOptions), {basedir:dir || __dirname});
-    return resolver.sync(moduleId, options);
+    if (has(moduleId, options.moduleDirectory, options.basedir)) {
+      return get(moduleId, options.moduleDirectory, options.basedir);
+    }
+    const resolver = settings.get('resolveModule');
+    return set(moduleId, options.moduleDirectory, options.basedir, resolver.sync(moduleId, options));
   }
 
   addExtensions(...ext) {

@@ -1,7 +1,7 @@
 'use strict';
 
 const config = require('../package.json').config;
-const {uniq, makeArray} = require('./util');
+const {uniq, makeArray, isObject} = require('./util');
 
 let singleton;
 
@@ -64,8 +64,14 @@ class RequireExtraSettings extends Map {
    * @returns {boolean}     Did it set.
    */
   set(key, value) {
-    if (setterOverrides.hasOwnProperty(key)) return super.set(key, setterOverrides[key](value));
-    return super.set(key, value);
+    if (isObject(key)) {
+      Object.keys(key).forEach(_key=>this.set(_key, key[_key]));
+      return this;
+    } else {
+      if (setterOverrides.hasOwnProperty(key)) return super.set(key, setterOverrides[key](value));
+      super.set(key, value);
+      return this;
+    }
   }
 }
 

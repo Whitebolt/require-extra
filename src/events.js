@@ -105,7 +105,12 @@ class Events {
       listeners.get(eventName).add(listener);
       unsubscribes.push(()=>listeners.get(eventName).delete(listener));
     });
-    return ()=>unsubscribes.forEach(unsubscribe=>unsubscribe());
+
+    const unsubscribe = function() {
+      unsubscribes.forEach(unsubscribe=>unsubscribe());
+    };
+
+    return unsubscribe;
   }
 
   once(eventName, listener) {
@@ -114,6 +119,7 @@ class Events {
       unsubscribe();
       unsubscribe = undefined;
     });
+    return unsubscribe;
   }
 
   emit(eventName, ...data) {
