@@ -162,7 +162,7 @@ function _importDirectoryOptionsParser(options={}) {
  * @returns {Promise.<Array>}                 The module definitions.
  */
 async function _importDirectoryModules(dirPath, options) {
-  const source = getCallingFileName();
+  const source = ((options.parent || {}).filename || options.parent) || getCallingFileName();
   const require = (options.useSyncRequire ? requireSync : requireAsync);
   const files = await filesInDirectories(makeArray(dirPath), options);
   const modDefs = await Promise.all(files.map(async (target)=> {

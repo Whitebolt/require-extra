@@ -97,7 +97,10 @@ An options object can be passed to both require() and require.resolve() as the f
 
 The possible options are:
  1. **resolver:** A resolver class instance for calculating paths (this an object with resolve function like the one available in [async-resolve](https://github.com/Meettya/async-resolve)).
- 2. **dir** The route directory to use for starting path calculations.  If this is not supplied then the path is calculated using an algorithm that loops through a stack trace.
+ 2. **basedir** The route directory to use for starting path calculations.  If this is not supplied then the path is calculated using an algorithm that loops through a stack trace.
+ 3. **moduleDirectory** *\[defaults to node_modules\]* Where to search for modules.
+ 4. **parent** The parent module to give exported module.
+ 5. **scope** The scope to add to default scope (default being: require, \__dirname, \__filenmae, exports). You can also supply a function which decideds how to apply the scope depending on the module.  With a function you can make some child modules have a special scope and others default.
 
 ```javascript
 var requireX = require('require-extra');
@@ -195,3 +198,5 @@ The second parameter, an options object, allows for greater control over the imp
  3. **callback:** Callback to run after each import will fire function(<Filename>, <Imported Module>).
  4. **merge:** *\[defaults to false\]* Whether to merge imorted properties and methods together.
  5. **useSyncRequire** *\[defaults to false\]* Whether to use the native node require or the async version in this module.
+ 6. **parent** The parent module name.  Async/Await functions do not give a full stack trace so this is essential when these are used as this cannot be calculated.
+ 7. **basedir** The directory we count as the base for resolve operations.  As with *parent* this is needed if async/await is being used.
