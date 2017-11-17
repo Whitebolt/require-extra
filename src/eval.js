@@ -168,8 +168,6 @@ function _runScript(config, options) {
     _runError(error, module);
   }
 
-  module.loaded = true;
-
   return module;
 }
 

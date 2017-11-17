@@ -13,8 +13,29 @@ const detective = require('detective');
 
 const fileCache = new Map();
 
-const xIsJson = /\.json$/;
-const xIsJsonOrNode = /\.(?:json|node)$/;
+
+
+settings.set('.js', function(config) {
+  _cacher(config.content, config.filename, config.basedir, config.resolver);
+  const module = _eval(config);
+  module.loaded = true;
+  return module;
+});
+
+settings.set('.node', function(config) {
+  const module = new Module(config);
+  module.exports = process.dlopen(module, config.filename);
+  module.loaded = true;
+  return module;
+});
+
+settings.set('.json', function(config) {
+  const module = new Module(config);
+  if (Buffer.isBuffer(config.content)) config.content = config.content.toString();
+  module.exports = JSON.parse(config.content);
+  module.loaded = true;
+  return module;
+});
 
 
 /**
@@ -116,47 +137,53 @@ function _loadModuleText(target, source, sync=false) {
 function _evalModuleText(filename, content, userResolver) {
   if (content === undefined) return;
 
-  const moduleConfig = _createModuleConfig(filename, content, _getResolve(userResolver));
+  const ext = path.extname(filename);
+  if (!settings.has(ext)) return;
+
+  const config = _createModuleConfig(filename, content, _getResolve(userResolver));
+  let module = _runEval(config, settings.get(ext));
+
+  if (fileCache.has(filename)) fileCache.delete(filename);
+  return module;
+}
+
+/**
+ * Run the parser with the given configuration and deal with events, returning the module.
+ *
+ * @private
+ * @param {Object} config
+ * @param {Function} parser
+ * @returns {Module}
+ */
+function _runEval(config, parser) {
   const time = process.hrtime();
-  let module;
-  if (xIsJsonOrNode.test(filename)) {
-    module = new Module(moduleConfig);
-
-    if (xIsJson.test(filename)) {
-      module.exports = JSON.parse(content);
-    } else {
-      module.exports = process.dlopen(module, filename);
-    }
-
-    module.loaded = true;
-  } else {
-    cacher(moduleConfig.content, moduleConfig.filename, moduleConfig.basedir, userResolver);
-    module = _eval(moduleConfig);
-  }
-
-  emitter.emit('evaluated', new emitter.Evaluated({
+  let module = parser.bind(settings)(config);
+  if (module.loaded) emitter.emit('evaluated', new emitter.Evaluated({
     target:module.filename,
     source:(module.parent || {}).filename,
     duration:process.hrtime(time),
     cacheSize: cache.size
   }));
 
-  if (fileCache.has(filename)) fileCache.delete(filename);
   return module;
 }
 
-function cacher(content, filename, basedir, userResolver) {
+/**
+ * Try to pre-load requires by parsing the loaded text for requires (and descendants).
+ *
+ * @private
+ * @param {string|Buffer} content     The module content.
+ * @param {string} filename           The module filename.
+ * @param {string} basedir            The module basedir.
+ * @param {Resolver} userResolver     The Resolver used.
+ */
+function _cacher(content, filename, basedir, userResolver) {
   try {
     detective(content).map(moduleId=>{
       if (!userResolver.isCoreModule(moduleId)) {
         userResolver.resolve(moduleId, basedir).then(modulePath=>{
-          if (!cache.has(modulePath) && !fileCache.has(modulePath)) {
-            _loadModuleText(modulePath, filename).then(content=>{
-              if (!xIsJsonOrNode.test(filename)) {
-                return cacher(content, modulePath, path.dirname(modulePath), userResolver)
-              }
-            });
-          }
+          if (!cache.has(modulePath) && !fileCache.has(modulePath)) _loadModuleText(modulePath, filename)
+              .then(content=>_cacher(content, modulePath, path.dirname(modulePath), userResolver));
         }, err=>true);
       }
     });
@@ -181,7 +208,8 @@ function _createModuleConfig(filename, content, userResolver) {
     includeGlobals:true,
     syncRequire:_syncRequire(_syncRequire),
     resolveModulePath,
-    basedir: path.dirname(filename)
+    basedir: path.dirname(filename),
+    resolver: userResolver
   }, userResolver.export);
 }
 
