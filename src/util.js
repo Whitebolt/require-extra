@@ -178,47 +178,118 @@ util.readDir = util.promisify(fs.readdir);
 
 const readFileCallbacks = new Map();
 
-util.readFile = function readFile(filepath, encoding, cache) {
+/**
+ * Add a callback for reading of given file.
+ *
+ * @private
+ * @param {string} filename           File to set callback for.
+ * @returns {Promise.<Buffer|*>}      The file contents, once loaded.
+ */
+function _addReadCallback(filename) {
+  return new Promise((resolve, reject)=> {
+    readFileCallbacks.get(filename).add((err, data)=> {
+      if (err) return reject(err);
+      return resolve(data);
+    });
+  });
+}
+
+/**
+ * Add callbacks set for given file
+ *
+ * @private
+ * @param {string} filename     File to add for.
+ * @param {Map} cache           Cache to use.
+ * @returns {Set}               The callbacks.
+ */
+function _addReadCallbacks(filename, cache) {
+  const callbacks = new Set();
+  cache.set(filename, true);
+  readFileCallbacks.set(filename, callbacks);
+  return callbacks;
+}
+
+/**
+ * Return cached file if already loaded or set a callback if currently loading/in-queue.
+ *
+ *
+ * @param {string} filename           File to get from cache.
+ * @param {Map} cache                 The cache to use.
+ * @returns {Promise.<Buffer|*>}      The file contents.
+ */
+async function _handleFileInCache(filename, cache) {
+  if (cache.get(filename) !== true) return cache.get(filename);
+  return _addReadCallback(filename);
+}
+
+/**
+ * Fire any awaiting callbacks for given file data.
+ *
+ * @private
+ * @param {string} filename              The filename to fire callbacks on.
+ * @param {Buffer|Error} data            The received data.
+ * @param {Function} promiseCallback     The promise promiseCallback to fire (either resolve() or reject()).
+ */
+function _fireReadFileCallbacks(filename, data, promiseCallback) {
+  const callbacks = readFileCallbacks.get(filename);
+  if (callbacks) {
+    if (callbacks.size) callbacks.forEach(callback=>(
+      (promiseCallback.name === 'resolve')?callback(null, data):callback(data, null))
+    );
+    callbacks.clear();
+    readFileCallbacks.delete(filename);
+    promiseCallback(data);
+  }
+}
+
+/**
+ * Load a file synchronously using a cache.
+ *
+ * @public
+ * @param {string} filename               The file to load.
+ * @param {Map} cache                     The cache to use.
+ * @param {null|string} [encoding=null]   The encoding to load as.
+ * @returns {Promise.<Buffer|*>}          The load results.
+ */
+util.readFile = function readFile(filename, cache, encoding=null) {
+  if (cache.has(filename)) return _handleFileInCache(filename, cache);
+
   return new Promise((resolve, reject)=>{
-    if (cache.has(filepath)) {
-      if (cache.get(filepath) !== true) {
-        return cache.get(filepath);
-      }
-      readFileCallbacks.get(filepath).add((err, data)=>{
-        if (err) return reject(err);
-        return resolve(data);
-      });
-    } else {
-      const callbacks = new Set();
-      cache.set(filepath, true);
-      readFileCallbacks.set(filepath, callbacks);
-      const contents = [];
-      fs.createReadStream(filepath, {encoding:null}).on('data', chunk=>{
-        contents.push(chunk);
-      }).on('end', ()=>{
-        const data = Buffer.concat(contents).toString();
-        cache.set(filepath, data);
-        if (callbacks.size) callbacks.forEach(callback=>callback(null, data));
-        callbacks.clear();
-        readFileCallbacks.delete(filepath);
-        resolve(data);
-      }).on('error', error=>{
-        if (callbacks.size) callbacks.forEach(callback=>callback(error, null));
-        callbacks.clear();
-        readFileCallbacks.delete(filepath);
-        reject(error)
-      });
-    }
+    const contents = [];
+
+    _addReadCallbacks(filename, cache);
+    fs.createReadStream(filename, {encoding})
+      .on('data', chunk=>contents.push(chunk))
+      .on('end', ()=>{
+        const data = Buffer.concat(contents);
+        cache.set(filename, data);
+        _fireReadFileCallbacks(filename, data, resolve);
+      })
+      .on('error', error=>_fireReadFileCallbacks(filename, error, reject));
   });
 };
 
-util.readFileSync = function readFileSync(filepath, encoding, cache) {
-  if (cache.has(filepath) && (cache.get(filepath) !== true)) return cache.get(filepath);
-  const data = fs.readFileSync(filepath, encoding);
-  cache.set(filepath, data);
+/**
+ * Read a file synchronously using file cache.
+ *
+ * @param {string} filename               The filename to load.
+ * @param {Map} cache                     The cache to use.
+ * @param {null|strin} [encoding=null]    The encoding to use.
+ * @returns {Buffer\*}                    The file contents as a buffer.
+ */
+util.readFileSync = function readFileSync(filename, cache, encoding=null) {
+  if (cache.has(filename) && (cache.get(filename) !== true)) return cache.get(filename);
+  const data = fs.readFileSync(filename, encoding);
+  cache.set(filename, data);
   return data;
 };
 
+/**
+ * Get the global require or local one if no global found.
+ *
+ * @public
+ * @returns {Function}
+ */
 util.getRequire = function getRequire() {
   try {
     return __require;

@@ -7,7 +7,7 @@ const Resolver = require('./resolver');
 const cache = require('./cache');
 const Module = require('./Module');
 const path = require('path');
-const {isString, readFile, readFileSync, getCallingDir, promisify, getRequire} = require('./util');
+const {isString, isFunction, readFile, readFileSync, getCallingDir, promisify, getRequire} = require('./util');
 const emitter = require('./events');
 const detective = require('detective');
 
@@ -118,11 +118,15 @@ function _loadModuleText(target, source, sync=false) {
   const loadError = error=>{
     const _error = new emitter.Error({target, source, error});
     emitter.emit('error', _error);
-    if (!_error.ignore()) throw error;
+    if (_error.ignore && isFunction(_error.ignore) && !_error.ignore()) throw error;
   };
 
-  if (sync) return loaded(readFileSync(target, 'utf-8', fileCache));
-  return readFile(target, 'utf8', fileCache).then(loaded, loadError);
+  if (!sync) return readFile(target, fileCache).then(loaded, loadError);
+  try {
+    return loaded(readFileSync(target, fileCache));
+  } catch(error) {
+    loadError(error);
+  }
 }
 
 /**
