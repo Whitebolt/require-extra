@@ -182,19 +182,9 @@ function _runScript(config, options) {
  * @returns {Module}
  */
 function evaluate(config) {
-  const time = process.hrtime();
   const _config = _parseConfig(config);
   const options = _createOptions(_config);
-  const module = _runScript(_config, options);
-
-  emitter.emit('evaluated', new emitter.Evaluated({
-    target:module.filename,
-    source:(module.parent || {}).filename,
-    duration: process.hrtime(time),
-    cacheSize: cache.size
-  }));
-
-  return module;
+  return _runScript(_config, options);
 }
 
 

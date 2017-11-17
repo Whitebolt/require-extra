@@ -117,9 +117,9 @@ function _evalModuleText(filename, content, userResolver) {
   if (content === undefined) return;
 
   const moduleConfig = _createModuleConfig(filename, content, _getResolve(userResolver));
+  const time = process.hrtime();
   let module;
   if (xIsJsonOrNode.test(filename)) {
-    const time = process.hrtime();
     module = new Module(moduleConfig);
 
     if (xIsJson.test(filename)) {
@@ -129,17 +129,17 @@ function _evalModuleText(filename, content, userResolver) {
     }
 
     module.loaded = true;
-
-    emitter.emit('evaluated', new emitter.Evaluated({
-      target:module.filename,
-      source:(module.parent || {}).filename,
-      duration:process.hrtime(time),
-      cacheSize: cache.size
-    }));
   } else {
     cacher(moduleConfig.content, moduleConfig.filename, moduleConfig.basedir, userResolver);
     module = _eval(moduleConfig);
   }
+
+  emitter.emit('evaluated', new emitter.Evaluated({
+    target:module.filename,
+    source:(module.parent || {}).filename,
+    duration:process.hrtime(time),
+    cacheSize: cache.size
+  }));
 
   if (fileCache.has(filename)) fileCache.delete(filename);
   return module;
