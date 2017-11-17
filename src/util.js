@@ -5,6 +5,10 @@ const path = require('path');
 const callsite = require('callsite');
 const util = require('lodash-provider');
 const _util = require('util');
+let settings;
+
+const fileQueue = [];
+let loading = 0;
 
 
 /**
@@ -226,20 +230,61 @@ async function _handleFileInCache(filename, cache) {
  * Fire any awaiting callbacks for given file data.
  *
  * @private
- * @param {string} filename              The filename to fire callbacks on.
- * @param {Buffer|Error} data            The received data.
- * @param {Function} promiseCallback     The promise promiseCallback to fire (either resolve() or reject()).
+ * @param {string} filename           The filename to fire callbacks on.
+ * @param {Buffer|Error} data         The received data.
+ * @param {boolean} [error=false]     Is this an error or file data?
  */
-function _fireReadFileCallbacks(filename, data, promiseCallback) {
+function _fireReadFileCallbacks(filename, data, error=false) {
   const callbacks = readFileCallbacks.get(filename);
   if (callbacks) {
-    if (callbacks.size) callbacks.forEach(callback=>(
-      (promiseCallback.name === 'resolve')?callback(null, data):callback(data, null))
-    );
+    if (callbacks.size) callbacks.forEach(callback=>error?callback(data, null):callback(null, data));
     callbacks.clear();
     readFileCallbacks.delete(filename);
-    promiseCallback(data);
   }
+}
+
+/**
+ * File queue handler.
+ *
+ * @private
+ */
+function _runFileQueue() {
+  if (!settings) settings = require('./settings');
+  const simultaneous = settings.get('load-simultaneously') || 10;
+
+  if ((loading < simultaneous) && (fileQueue.length)) {
+    loading++;
+    fileQueue.shift()();
+  }
+}
+
+/**
+ * On end listener for readFile.
+ *
+ * @private
+ * @param {string} filename           The filename.
+ * @param {Array.<Buffer>} contents   The file contents as a series of buffers.
+ * @param {Map} cache                 The file cache.
+ */
+function _readFileOnEnd(filename, contents, cache) {
+  loading--;
+  const data = Buffer.concat(contents);
+  cache.set(filename, data);
+  _fireReadFileCallbacks(filename, data);
+  _runFileQueue();
+}
+
+/**
+ * On error listener for readFile.
+ *
+ * @private
+ * @param {string} filename     The filename.
+ * @param {Error} error         The error fired.
+ */
+function _readFileOnError(filename, error) {
+  loading--;
+  _fireReadFileCallbacks(filename, error);
+  _runFileQueue();
 }
 
 /**
@@ -253,20 +298,16 @@ function _fireReadFileCallbacks(filename, data, promiseCallback) {
  */
 util.readFile = function readFile(filename, cache, encoding=null) {
   if (cache.has(filename)) return _handleFileInCache(filename, cache);
-
-  return new Promise((resolve, reject)=>{
+  _addReadCallbacks(filename, cache);
+  fileQueue.push(()=>{
     const contents = [];
-
-    _addReadCallbacks(filename, cache);
     fs.createReadStream(filename, {encoding})
       .on('data', chunk=>contents.push(chunk))
-      .on('end', ()=>{
-        const data = Buffer.concat(contents);
-        cache.set(filename, data);
-        _fireReadFileCallbacks(filename, data, resolve);
-      })
-      .on('error', error=>_fireReadFileCallbacks(filename, error, reject));
+      .on('end', ()=>_readFileOnEnd(filename, contents, cache))
+      .on('error', error=>_readFileOnError(filename, error))
   });
+  _runFileQueue();
+  return _handleFileInCache(filename, cache);
 };
 
 /**

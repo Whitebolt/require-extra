@@ -14,6 +14,7 @@ const detective = require('detective');
 const fileCache = new Map();
 
 
+settings.set('load-simultaneously', 15);
 
 settings.set('.js', function(config) {
   _cacher(config.content, config.filename, config.basedir, config.resolver);
