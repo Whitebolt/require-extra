@@ -55,6 +55,7 @@ function _exportRequireMethods(exported, settings) {
 
   exported.cache = cache;
   exported.sync = syncRequire;
+  exported.Module = Module;
 }
 
 function _deprecate(exported) {

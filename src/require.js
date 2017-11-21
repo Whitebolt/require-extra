@@ -119,7 +119,7 @@ function _loadModuleText(target, source, sync=false) {
   const loadError = error=>{
     const _error = new emitter.Error({target, source, error});
     emitter.emit('error', _error);
-    if (_error.ignore && isFunction(_error.ignore) && !_error.ignore()) throw error;
+    if (!_error.ignore || (_error.ignore && isFunction(_error.ignore) && !_error.ignore()));
   };
 
   if (!sync) return readFile(target, fileCache).then(loaded, loadError);
@@ -146,7 +146,7 @@ function _evalModuleText(filename, content, userResolver) {
   if (!settings.has(ext)) return;
 
   const config = _createModuleConfig(filename, content, _getResolve(userResolver));
-  let module = _runEval(config, settings.get(ext));
+  let module = _runEval(config, settings.get(ext), userResolver.options || {});
 
   if (fileCache.has(filename)) fileCache.delete(filename);
   return module;
@@ -160,9 +160,9 @@ function _evalModuleText(filename, content, userResolver) {
  * @param {Function} parser
  * @returns {Module}
  */
-function _runEval(config, parser) {
+function _runEval(config, parser, options) {
   const time = process.hrtime();
-  let module = parser.bind(settings)(config);
+  let module = parser.bind(settings)(config, options);
   if (module.loaded) emitter.emit('evaluated', new emitter.Evaluated({
     target:module.filename,
     source:(module.parent || {}).filename,

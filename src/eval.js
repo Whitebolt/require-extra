@@ -140,7 +140,7 @@ function _runError(error, module) {
     error
   });
   emitter.emit('error', _error);
-  if (!_error.ignore()) throw error;
+  if (!_error.ignore || (_error.ignore && isFunction(_error.ignore) && !_error.ignore()));
 }
 
 /**

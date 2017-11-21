@@ -51,7 +51,7 @@ function _getRequire(config) {
     return config.syncRequire(_getResolver(params), ...params);
   }, requireX, {
     resolve: (...params)=>config.resolveModulePath(_getResolver(params), ...params),
-    async: (...params)=>requireX.requireAsync(_getResolver(moduleId), ...params),
+    async: (...params)=>requireX(_getResolver(params), ...params),
     native: moduleId=>requireLike(config.filename)(moduleId),
     import: (dirPath, options, callback)=>requireX.import(dirPath, _mergeResolver(options), callback)
   });
