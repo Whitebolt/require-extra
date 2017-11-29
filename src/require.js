@@ -9,12 +9,12 @@ const Module = require('./Module');
 const path = require('path');
 const {isString, isFunction, readFile, readFileSync, getCallingDir, promisify, getRequire} = require('./util');
 const emitter = require('./events');
-const detective = require('detective');
 
+const _xRequireExtract = /\brequire\s*?\(\s*?[\"\'](.*?)[\"\']\*?\)/g;
 const fileCache = new Map();
 
 
-settings.set('load-simultaneously', 15);
+settings.set('load-simultaneously', 1000);
 
 settings.set('.js', function(config) {
   _cacher(config.content, config.filename, config.basedir, config.resolver);
@@ -173,6 +173,13 @@ function _runEval(config, parser, options) {
   return module;
 }
 
+function detective(content) {
+  const found = [];
+  let result;
+  while ((result = _xRequireExtract.exec(content)) !== null) found.push(result[1]);
+  return found;
+}
+
 /**
  * Try to pre-load requires by parsing the loaded text for requires (and descendants).
  *
@@ -187,8 +194,12 @@ function _cacher(content, filename, basedir, userResolver) {
     detective(content).map(moduleId=>{
       if (!userResolver.isCoreModule(moduleId)) {
         userResolver.resolve(moduleId, basedir).then(modulePath=>{
-          if (!cache.has(modulePath) && !fileCache.has(modulePath)) _loadModuleText(modulePath, filename)
-              .then(content=>_cacher(content, modulePath, path.dirname(modulePath), userResolver));
+          if (!cache.has(modulePath) && !fileCache.has(modulePath)) {
+            _loadModuleText(modulePath, filename).then(content=> {
+              const _userResolver = new Resolver(Object.assign({}, userResolver, {basedir: path.dirname(modulePath)}));
+              return _cacher(content, modulePath, path.dirname(modulePath), _userResolver)
+            });
+          }
         }, err=>true);
       }
     });
