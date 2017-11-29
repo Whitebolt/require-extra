@@ -45,6 +45,17 @@ function Error_Event(config) {
 Error_Event.prototype = Object.create(Event.prototype);
 Error_Event.prototype.constructor = Error_Event;
 
+function Load_Event(config) {
+  var freezer = _setFreeze(this);
+  Event.call(this, config);
+  this.type = 'load';
+  this.source = config.source;
+  _doFreeze(this, freezer);
+}
+
+Load_Event.prototype = Object.create(Event.prototype);
+Load_Event.prototype.constructor = Load_Event;
+
 function Loaded_Event(config) {
   var freezer = _setFreeze(this);
   Event.call(this, config);
@@ -56,6 +67,19 @@ function Loaded_Event(config) {
 
 Loaded_Event.prototype = Object.create(Event.prototype);
 Loaded_Event.prototype.constructor = Loaded_Event;
+
+function Evaluate_Event(config) {
+  var freezer = _setFreeze(this);
+  Loaded_Event.call(this, config);
+  this.type = 'evaluate';
+  this.moduleConfig = config.moduleConfig;
+  this.parserOptions = config.parserOptions;
+  this.data = {};
+  _doFreeze(this, freezer);
+}
+
+Evaluate_Event.prototype = Object.create(Event.prototype);
+Evaluate_Event.prototype.constructor = Evaluate_Event;
 
 function Evaluated_Event(config) {
   var freezer = _setFreeze(this);
@@ -71,6 +95,8 @@ Evaluated_Event.prototype.constructor = Evaluated_Event;
 emitter.Event = Event;
 emitter.Error = Error_Event;
 emitter.Loaded = Loaded_Event;
+emitter.Load = Load_Event;
+emitter.Evaluate = Evaluate_Event;
 emitter.Evaluated = Evaluated_Event;
 
 module.exports = emitter;

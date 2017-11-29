@@ -14,7 +14,7 @@ function _exportEmitter(exported) {
     exported, [
       'addListener', 'emit', 'eventNames', 'getMaxListeners', 'listenerCount', 'listeners', 'on', 'once',
       'prependListener', 'prependOnceListener', 'removeAllListeners', 'removeListener', 'setMaxListeners',
-      'Error', 'Event', 'Loaded', 'Evaluated'
+      'Error', 'Event', 'Loaded', 'Evaluated', 'Load', 'Evaluate'
     ]
   );
 

@@ -108,18 +108,21 @@ function resolveModulePathSync(userResolver, moduleName) {
  */
 function _loadModuleText(target, source, sync=false) {
   const time = process.hrtime();
+  emitter.emit('load', new emitter.Load({target, source}));
 
   const loaded = txt=>{
     try {
       emitter.emit('loaded', new emitter.Loaded({target, duration: process.hrtime(time), source}));
       return txt;
-    } catch (error) { return loadError(error); }
+    } catch (error) {
+      return loadError(error);
+    }
   };
 
   const loadError = error=>{
     const _error = new emitter.Error({target, source, error});
     emitter.emit('error', _error);
-    if (!_error.ignore || (_error.ignore && isFunction(_error.ignore) && !_error.ignore()));
+    if (!_error.ignore || (_error.ignore && isFunction(_error.ignore) && !_error.ignore())) throw error;
   };
 
   if (!sync) return readFile(target, fileCache).then(loaded, loadError);
@@ -143,10 +146,8 @@ function _evalModuleText(filename, content, userResolver) {
   if (content === undefined) return;
 
   const ext = path.extname(filename);
-  if (!settings.has(ext)) return;
-
   const config = _createModuleConfig(filename, content, _getResolve(userResolver));
-  let module = _runEval(config, settings.get(ext), userResolver.options || {});
+  let module = _runEval(config, settings.get(ext) || function(){}, userResolver.options || {});
 
   if (fileCache.has(filename)) fileCache.delete(filename);
   return module;
@@ -162,8 +163,17 @@ function _evalModuleText(filename, content, userResolver) {
  */
 function _runEval(config, parser, options) {
   const time = process.hrtime();
-  let module = parser.bind(settings)(config, options);
-  if (module.loaded) emitter.emit('evaluated', new emitter.Evaluated({
+  const evalEvent = new emitter.Evaluate({
+    target:config.filename,
+    source:(config.parent || {}).filename,
+    moduleConfig: config,
+    parserOptions: options
+  });
+
+  emitter.emit('evaluate', evalEvent);
+
+  let module = ((evalEvent.data.module) ? evalEvent.data.module : parser.bind(settings)(config, options));
+  if (module && module.loaded) emitter.emit('evaluated', new emitter.Evaluated({
     target:module.filename,
     source:(module.parent || {}).filename,
     duration:process.hrtime(time),

@@ -47,7 +47,6 @@ function _createSandbox(config) {
 
   const sandbox = {};
   if (config.includeGlobals && (!proxiedGlobal || !config.proxyGlobal)) Object.assign(sandbox, global);
-  //if (isObject(config.scope)) Object.assign(sandbox, config.scope);
 
   return vm.createContext(sandbox);
 }
@@ -146,10 +145,9 @@ function _runError(error, module) {
  */
 function _runScript(config, options) {
   const useSandbox = ((isFunction(config.useSandbox)) ? _config.useSandbox(_config) || false : config.useSandbox);
-  const scope = (isFunction(config.scope) ? config.scope(config) || {} : config.scope);
   const module = new Module(config);
-  const scopeParams = _getScopeParams(config, module, scope);
-  const script = _createScript(config, options, scope);
+  const scopeParams = _getScopeParams(config, module, config.scope);
+  const script = _createScript(config, options, config.scope);
 
   try {
     if (useSandbox) {
