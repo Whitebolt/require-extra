@@ -108,12 +108,12 @@ function resolveModulePathSync(userResolver, moduleName) {
  */
 function _loadModuleText(target, source, sync=false) {
   const time = process.hrtime();
-  emitter.emit('load', new emitter.Load({target, source}));
+  const loadEvent = emitter.emit('load', new emitter.Load({target, source, sync}));
 
   const loaded = txt=>{
     try {
-      emitter.emit('loaded', new emitter.Loaded({target, duration: process.hrtime(time), source}));
-      return txt;
+      const loadedEvent = emitter.emit('loaded', new emitter.Loaded({target, duration: process.hrtime(time), source, sync}));
+      return sync?txt:loadedEvent.then(()=>txt,loadError);
     } catch (error) {
       return loadError(error);
     }
@@ -125,7 +125,7 @@ function _loadModuleText(target, source, sync=false) {
     if (!_error.ignore || (_error.ignore && isFunction(_error.ignore) && !_error.ignore())) throw error;
   };
 
-  if (!sync) return readFile(target, fileCache).then(loaded, loadError);
+  if (!sync) return loadEvent.then(()=>readFile(target, fileCache).then(loaded, loadError), loadError);
   try {
     return loaded(readFileSync(target, fileCache));
   } catch(error) {
@@ -142,12 +142,12 @@ function _loadModuleText(target, source, sync=false) {
  * @param {Resolver|Object} [userResolver]    Resolver to use, if not a resolver assume it is config for a new resolver.
  * @returns {Module}                          The new module.
  */
-function _evalModuleText(filename, content, userResolver) {
+function _evalModuleText(filename, content, userResolver, sync=true) {
   if (content === undefined) return;
 
   const ext = path.extname(filename);
   const config = _createModuleConfig(filename, content, _getResolve(userResolver));
-  let module = _runEval(config, settings.get(ext) || function(){}, userResolver.options || {});
+  let module = _runEval(config, settings.get(ext) || function(){}, userResolver.options || {}, sync);
 
   if (fileCache.has(filename)) fileCache.delete(filename);
   return module;
@@ -161,26 +161,32 @@ function _evalModuleText(filename, content, userResolver) {
  * @param {Function} parser
  * @returns {Module}
  */
-function _runEval(config, parser, options) {
+function _runEval(config, parser, options, sync=true) {
   const time = process.hrtime();
   const evalEvent = new emitter.Evaluate({
     target:config.filename,
     source:(config.parent || {}).filename,
     moduleConfig: config,
-    parserOptions: options
+    parserOptions: options,
+    sync
   });
 
-  emitter.emit('evaluate', evalEvent);
+  const evaluateEvent = emitter.emit('evaluate', evalEvent);
 
-  let module = ((evalEvent.data.module) ? evalEvent.data.module : parser.bind(settings)(config, options));
-  if (module && module.loaded) emitter.emit('evaluated', new emitter.Evaluated({
-    target:module.filename,
-    source:(module.parent || {}).filename,
-    duration:process.hrtime(time),
-    cacheSize: cache.size
-  }));
+  function evaluated() {
+    let module = ((evalEvent.data.module) ? evalEvent.data.module : parser.bind(settings)(config, options));
+    if (!module || !module.loaded) return module;
+    const evaluatedEvent =  emitter.emit('evaluated', new emitter.Evaluated({
+      target:module.filename,
+      source:(module.parent || {}).filename,
+      duration:process.hrtime(time),
+      cacheSize: cache.size,
+      sync
+    }));
+    return sync?module:evaluatedEvent.then(()=>module);
+  }
 
-  return module;
+  return sync?evaluated():evaluateEvent.then(evaluated);
 }
 
 function detective(content) {
@@ -250,14 +256,15 @@ function _createModuleConfig(filename, content, userResolver) {
  */
 async function _loadModule(filename, userResolver) {
   if (!cache.has(filename)) {
-    cache.set(filename, _evalModuleText(filename, await _loadModuleText(filename, userResolver.parent), userResolver));
+    await _evalModuleText(filename, await _loadModuleText(filename, userResolver.parent), userResolver, false).then(
+      module=>cache.set(filename, module)
+    )
   }
   return cache.get(filename).exports;
 }
 
 /**
- * Load and evaluate a module returning undefined to promise resolve
- * on failure.
+ * Load and evaluate a module returning undefined to promise resolve on failure.
  *
  * @private
  * @param {string} filename                   The path of the evaluated module.

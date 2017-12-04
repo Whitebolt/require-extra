@@ -1,8 +1,37 @@
 'use strict';
 
-var Private = require("./Private");
 var EventEmitter = require('events');
-var emitter = new EventEmitter();
+
+function AsyncEventEmitter() {
+  EventEmitter.apply(this, arguments);
+
+  var parentEmit = this.emit;
+
+  this.emit = function() {
+    var eventName = arguments[0];
+    var event = arguments[1];
+    if ((event === undefined) || !(event instanceof Event) || event.sync) return parentEmit.apply(this, arguments);
+
+    var args = Array.prototype.slice.call(arguments, 1);
+    var listeners = this.listeners(eventName);
+
+    function next(listener) {
+      return Promise.resolve(listener.apply(this, args)).then(function() {
+        return (listeners.length ? next(listeners.shift()) : Promise.resolve());
+      });
+    }
+
+    if (listeners.length) return next(listeners.shift());
+    return Promise.resolve();
+  };
+}
+
+AsyncEventEmitter.prototype = Object.create(EventEmitter.prototype);
+AsyncEventEmitter.prototype.constructor = AsyncEventEmitter;
+
+
+var emitter = new AsyncEventEmitter();
+var Private = require("./Private");
 
 function _setFreeze(instance) {
   var freezer = {freeze:false};
@@ -24,6 +53,7 @@ function Event(config) {
   var freezer = _setFreeze(this);
   this.type = config.type || 'event';
   this.target = config.target;
+  this.sync = !!config.sync;
   _doFreeze(this, freezer);
 }
 
