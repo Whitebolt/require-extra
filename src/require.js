@@ -7,6 +7,7 @@ const Resolver = require('./resolver');
 const cache = require('./cache');
 const Module = require('./Module');
 const path = require('path');
+const toNamespacedPath = path.toNamespacedPath ? path.toNamespacedPath : path=>path;
 const {isString, isFunction, readFile, readFileSync, getCallingDir, promisify, getRequire} = require('./util');
 const emitter = require('./events');
 
@@ -25,7 +26,7 @@ settings.set('.js', function(config) {
 
 settings.set('.node', function(config) {
   const module = new Module(config);
-  module.exports = process.dlopen(module, config.filename);
+  process.dlopen(module, toNamespacedPath(config.filename));
   module.loaded = true;
   return module;
 });
