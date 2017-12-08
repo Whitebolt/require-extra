@@ -27,7 +27,8 @@ function _parseConfig(config) {
     includeGlobals:false,
     proxyGlobal:true,
     useSandbox: settings.get('useSandbox') || false,
-    workspace: [workspaces.DEFAULT_WORKSPACE]
+    workspace: [workspaces.DEFAULT_WORKSPACE],
+    squashErrors: !!(config.resolver || {}).squashErrors
   }, config);
 
   if (isBuffer(_config.content)) _config.content = _config.content.toString();
@@ -79,8 +80,10 @@ function _createScript(config, options, scope={}) {
   try {
     return new vm.Script(stringScript, options);
   } catch(error) {
-    _runError(error, config);
-    throw error;
+    if (!config.squashErrors) {
+      _runError(error, module);
+      throw error;
+    }
   }
 }
 
@@ -156,7 +159,7 @@ function _runScript(config, options) {
       script.runInThisContext(options)(...scopeParams);
     }
   } catch(error) {
-    _runError(error, module);
+    if (!config.squashErrors) _runError(error, module);
   }
 
   return module;

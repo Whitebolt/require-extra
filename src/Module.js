@@ -37,7 +37,8 @@ function _getRequire(config) {
     basedir:config.basedir||path.dirname(config.filename),
     parent:config.filename,
     scope:config.scope,
-    useSandbox:config.useSandbox
+    useSandbox:config.useSandbox,
+    squashErrors:!!((config.resolver ||{}).squashErrors || config.squashErrors)
   };
 
   const requireX = require('./index');

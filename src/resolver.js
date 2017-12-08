@@ -13,9 +13,9 @@ const allowedOptions = [
   'pathFilter', 'paths', 'moduleDirectory', 'preserveSymlinks'
 ];
 
-const otherOptions = ['parent', 'useSandbox', 'useSyncRequire', 'merge', 'scope', 'options'];
+const otherOptions = ['parent', 'useSandbox', 'useSyncRequire', 'merge', 'scope', 'options', 'squashErrors'];
 
-const toExport = ['moduleDirectory', 'parent', 'useSandbox', 'useSyncRequire', 'merge', 'scope', 'options'];
+const toExport = ['moduleDirectory', 'parent', 'useSandbox', 'useSyncRequire', 'merge', 'scope', 'options', 'squashErrors'];
 
 const cache = new Map();
 
