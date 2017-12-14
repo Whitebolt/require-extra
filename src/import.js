@@ -5,9 +5,10 @@ const settings = require('./settings');
 const {requireAsync, requireSync} = require('./require');
 const {
   isFunction, intersection, uniq, readDir, makeArray, flattenDeep,
-  getCallingFileName, getCallingDir
+  getCallingFileName, getCallingDir, isObject
 } = require('./util');
 const emitter = require('./events');
+const tryModule = require('./try');
 
 /**
  * Get a list of files in the directory.
@@ -144,7 +145,9 @@ function _importDirectoryOptionsParser(options={}) {
     extension: options.extensions || settings.get('extensions'),
     useSyncRequire: settings.get('useSyncRequire'),
     merge: settings.get('mergeImports')
-  }, options);
+  }, options, {
+    squashErrors: !!options.retry
+  });
 
   if (_options.extensions) delete _options.extensions;
 
@@ -165,21 +168,26 @@ function _importDirectoryOptionsParser(options={}) {
  */
 async function _importDirectoryModules(dirPath, options) {
   const source = ((options.parent || {}).filename || options.parent) || getCallingFileName();
-  const require = (options.useSyncRequire ? requireSync : requireAsync);
   const files = await filesInDirectories(makeArray(dirPath), options);
-  const modDefs = await Promise.all(files.map(async (target)=> {
+  return tryLoading(files, source, options);
+}
+
+async function tryLoading(files, source, options, failCount=files.length) {
+  const require = (options.useSyncRequire ? requireSync : requireAsync);
+  const retry = [];
+  const modDefs = (await Promise.all(files.map(async (target)=> {
     if (_canImport(target, source, options)) {
+      if (!options.squashErrors) return [target, await require(options, target)];
       try {
         return [target, await require(options, target)];
-      } catch(error) {
-        const _error = new emitter.Error({target, source, error});
-        emitter.emit('error', _error);
-        if (!_error.ignore || (_error.ignore && isFunction(_error.ignore) && !_error.ignore())) throw error;
+      } catch (error) {
+        retry.push(target);
       }
     }
-  }));
+  }))).filter(modDef=>modDef);
 
-  return modDefs.filter(modDef=>modDef);
+  if (!options.squashErrors || !retry.length || (failCount <= retry.length)) return modDefs;
+  return tryLoading(retry, source, options, retry.length);
 }
 
 /**

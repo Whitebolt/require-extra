@@ -82,8 +82,9 @@ function _createScript(config, options, scope={}) {
   } catch(error) {
     if (!config.squashErrors) {
       _runError(error, module);
-      throw error;
+
     }
+    throw error;
   }
 }
 
@@ -159,7 +160,10 @@ function _runScript(config, options) {
       script.runInThisContext(options)(...scopeParams);
     }
   } catch(error) {
-    if (!config.squashErrors) _runError(error, module);
+    if (!config.squashErrors) {
+      _runError(error, module);
+    }
+    throw error;
   }
 
   return module;
