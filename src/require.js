@@ -150,7 +150,7 @@ function _evalModuleText(filename, content, userResolver, sync=true) {
   const config = _createModuleConfig(filename, content, _getResolve(userResolver));
   let module = _runEval(config, settings.get(ext) || function(){}, userResolver.options || {}, sync);
 
-  if (fileCache.has(filename)) fileCache.delete(filename);
+  if ((!(config.resolver || {}).squashErrors) && fileCache.has(filename)) fileCache.delete(filename);
   return module;
 }
 

@@ -79,12 +79,8 @@ function _createScript(config, options, scope={}) {
   const stringScript = wrap(config.content.replace(/^\#\!.*/, ''), scope);
   try {
     return new vm.Script(stringScript, options);
-  } catch(error) {
-    if (!config.squashErrors) {
-      _runError(error, module);
-
-    }
-    throw error;
+  } catch(error) { // These are not squashed as not evaluation errors but something else.
+    if (_runError(error, module)) throw error;
   }
 }
 
@@ -135,8 +131,9 @@ function _runError(error, module) {
     source:(module.parent || module).filename,
     error
   });
+  module.exports = _error;
   emitter.emit('error', _error);
-  if (!_error.ignore || (_error.ignore && isFunction(_error.ignore) && !_error.ignore()));
+  return (!!_error.ignore || (_error.ignore && isFunction(_error.ignore) && _error.ignore()));
 }
 
 /**
@@ -161,9 +158,10 @@ function _runScript(config, options) {
     }
   } catch(error) {
     if (!config.squashErrors) {
-      _runError(error, module);
+      if (_runError(error, module)) throw error;
+    } else {
+      throw error;
     }
-    throw error;
   }
 
   return module;

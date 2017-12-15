@@ -7,8 +7,7 @@ const {
   isFunction, intersection, uniq, readDir, makeArray, flattenDeep,
   getCallingFileName, getCallingDir, isObject
 } = require('./util');
-const emitter = require('./events');
-const tryModule = require('./try');
+const cache = require('./cache')
 
 /**
  * Get a list of files in the directory.
@@ -169,7 +168,10 @@ function _importDirectoryOptionsParser(options={}) {
 async function _importDirectoryModules(dirPath, options) {
   const source = ((options.parent || {}).filename || options.parent) || getCallingFileName();
   const files = await filesInDirectories(makeArray(dirPath), options);
-  return tryLoading(files, source, options);
+  return tryLoading(files, source, options).then(modDefs=>{
+    //console.log(modDefs.map(modDef=>modDef));
+    return modDefs;
+  })
 }
 
 async function tryLoading(files, source, options, failCount=files.length) {
@@ -181,13 +183,14 @@ async function tryLoading(files, source, options, failCount=files.length) {
       try {
         return [target, await require(options, target)];
       } catch (error) {
+        cache.delete(target);
         retry.push(target);
       }
     }
   }))).filter(modDef=>modDef);
 
   if (!options.squashErrors || !retry.length || (failCount <= retry.length)) return modDefs;
-  return tryLoading(retry, source, options, retry.length);
+  return tryLoading(retry, source, options, retry.length).then(_modDefs=>modDefs.concat(_modDefs));
 }
 
 /**
