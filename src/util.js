@@ -179,6 +179,7 @@ util.createLopAddIterator = function* createLopAddIterator(path, addition) {
 };
 
 util.readDir = util.promisify(fs.readdir);
+util.lstat = util.promisify(fs.lstat);
 
 const readFileCallbacks = new Map();
 

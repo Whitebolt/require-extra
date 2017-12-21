@@ -5,9 +5,9 @@ const settings = require('./settings');
 const {requireAsync, requireSync} = require('./require');
 const {
   isFunction, intersection, uniq, readDir, makeArray, flattenDeep,
-  getCallingFileName, getCallingDir, isObject
-} = require('./util');
-const cache = require('./cache')
+  getCallingFileName, getCallingDir, lstat
+  } = require('./util');
+const cache = require('./cache');
 
 /**
  * Get a list of files in the directory.
@@ -23,11 +23,21 @@ async function _filesInDirectory(dirPath, options) {
   let xExt = _getExtensionRegEx(options.extension || settings.get('extensions'));
 
   try {
-    return (await readDir(resolvedDirPath)).filter(
-      fileName=>xExt.test(fileName)
-    ).map(
-      fileName=>path.resolve(resolvedDirPath, fileName)
-    );
+    const files = await readDir(resolvedDirPath);
+    if (options.rescursive) {
+      const fullPaths = files.map(fileName=>path.resolve(resolvedDirPath, fileName));
+      const dirs = (await Promise.all(fullPaths.map(async (file)=>{
+        const stat = await lstat(file);
+        if (stat.isDirectory()) return file;
+      }))).filter(file=>file);
+      if (dirs.length) {
+        const deepFiles = flattenDeep(await Promise.all(dirs.map(dirPath=>_filesInDirectory(dirPath, options))));
+        files.push(...deepFiles);
+      }
+    }
+    return files
+      .filter(fileName=>xExt.test(fileName))
+      .map(fileName=>path.resolve(resolvedDirPath, fileName));
   } catch (err) {
     return [];
   }
@@ -141,9 +151,10 @@ function _importDirectoryOptionsParser(options={}) {
   const _options = Object.assign({
     imports: {},
     onload: options.callback,
-    extension: options.extensions || settings.get('extensions'),
+    extension: makeArray(options.extensions || settings.get('extensions')),
     useSyncRequire: settings.get('useSyncRequire'),
-    merge: settings.get('mergeImports')
+    merge: settings.get('mergeImports'),
+    rescursive: false
   }, options, {
     squashErrors: !!options.retry
   });
