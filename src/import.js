@@ -132,7 +132,6 @@ async function _importDirectory(dirPath, options={}) {
   const modDefs = await _importDirectoryModules(dirPath, _options);
 
   modDefs.forEach(([fileName, module])=>{
-    if (_options.onload) _options.onload(fileName, module);
     if ((_options.merge === true) && (!isFunction(module))) return Object.assign(_options.imports, module);
     _options.imports[_getFileName(fileName, _options.extension)] = module;
   });
@@ -179,10 +178,7 @@ function _importDirectoryOptionsParser(options={}) {
 async function _importDirectoryModules(dirPath, options) {
   const source = ((options.parent || {}).filename || options.parent) || getCallingFileName();
   const files = await filesInDirectories(makeArray(dirPath), options);
-  return tryLoading(files, source, options).then(modDefs=>{
-    //console.log(modDefs.map(modDef=>modDef));
-    return modDefs;
-  })
+  return tryLoading(files, source, options);
 }
 
 async function tryLoading(files, source, options, failCount=files.length) {
@@ -190,13 +186,22 @@ async function tryLoading(files, source, options, failCount=files.length) {
   const retry = [];
   const modDefs = (await Promise.all(files.map(async (target)=> {
     if (_canImport(target, source, options)) {
-      if (!options.squashErrors) return [target, await require(options, target)];
-      try {
-        return [target, await require(options, target)];
-      } catch (error) {
-        cache.delete(target);
-        retry.push(target);
+      let module;
+
+      if (!options.squashErrors) {
+        module = await require(options, target);
+	  } else {
+		  try {
+			  module = await require(options, target);
+		  } catch (error) {
+			  cache.delete(target);
+			  retry.push(target);
+			  return;
+		  }
       }
+
+      if (options.onload) options.onload(target, module);
+      return [target, module];
     }
   }))).filter(modDef=>modDef);
 
@@ -208,7 +213,7 @@ async function tryLoading(files, source, options, failCount=files.length) {
  * Import all the modules in a set of given paths,according to the supplied options.
  *
  * @public
- * @param {string|Array.<string>} dirPath   The path(s) to import frpm.
+ * @param {string|Array.<string>} dirPath   The path(s) to import from.
  * @param {Object} [options='']             The option to use in the import.
  * @param {Function} [callback]             Node-style callback to fire, use if you do not want a promise.
  * @returns {Promise.<Object>}
