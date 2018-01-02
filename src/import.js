@@ -8,6 +8,7 @@ const {
   getCallingFileName, getCallingDir, lstat
   } = require('./util');
 const cache = require('./cache');
+const ErrorEvent = require('./events').Error;
 
 /**
  * Get a list of files in the directory.
@@ -182,6 +183,7 @@ async function _importDirectoryModules(dirPath, options) {
 }
 
 async function tryLoading(files, source, options, failCount=files.length) {
+  const errors = new Map();
   const require = (options.useSyncRequire ? requireSync : requireAsync);
   const retry = [];
   const modDefs = (await Promise.all(files.map(async (target)=> {
@@ -196,6 +198,7 @@ async function tryLoading(files, source, options, failCount=files.length) {
 		  } catch (error) {
 			  cache.delete(target);
 			  retry.push(target);
+			  if (options.onerror) errors.set(target, error);
 			  return;
 		  }
       }
@@ -205,7 +208,12 @@ async function tryLoading(files, source, options, failCount=files.length) {
     }
   }))).filter(modDef=>modDef);
 
-  if (!options.squashErrors || !retry.length || (failCount <= retry.length)) return modDefs;
+  if (!options.squashErrors || !retry.length || (failCount <= retry.length)) {
+    if (options.onerror && (failCount <= retry.length) && (options.squashErrors)) {
+      (retry || []).forEach(source=>options.onerror(new ErrorEvent({source, error:errors.get(source)})));
+	}
+    return modDefs;
+  }
   return tryLoading(retry, source, options, retry.length).then(_modDefs=>modDefs.concat(_modDefs));
 }
 
