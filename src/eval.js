@@ -4,11 +4,11 @@ const vm = require('vm');
 const path = require('path');
 const isBuffer = Buffer.isBuffer;
 const {isString, makeArray, values, isFunction} = require('./util');
-const cache = require('./cache');
 const Module = require('./Module');
 const workspaces = require('./workspaces');
 const emitter = require('./events');
 const settings = require('./settings');
+const cache = require('./cache');
 
 const proxiedGlobal = require('semver').gt(process.versions.node, '8.3.0');
 
@@ -157,6 +157,7 @@ function _runScript(config, options) {
       script.runInThisContext(options)(...scopeParams);
     }
   } catch(error) {
+    if (config.squashErrors) cache.delete(options.filename);
     if (!config.squashErrors) {
       if (_runError(error, module)) throw error;
     } else {

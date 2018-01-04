@@ -257,8 +257,14 @@ function _createModuleConfig(filename, content, userResolver) {
  */
 async function _loadModule(filename, userResolver) {
   if (!cache.has(filename)) {
-    await _evalModuleText(filename, await _loadModuleText(filename, userResolver.parent), userResolver, false).then(
-      module=>cache.set(filename, module)
+    await _evalModuleText(
+      filename,
+      await _loadModuleText(filename, userResolver.parent), userResolver, false
+    ).then(
+      module=>{
+        if (module.exports === undefined) console.log("ERROR SET!", options.filename);
+        cache.set(filename, module)
+      }
     )
   }
   return cache.get(filename).exports;

@@ -6,7 +6,7 @@ const {requireAsync, requireSync} = require('./require');
 const {
   isFunction, intersection, uniq, readDir, makeArray, flattenDeep,
   getCallingFileName, getCallingDir, lstat
-  } = require('./util');
+} = require('./util');
 const cache = require('./cache');
 const ErrorEvent = require('./events').Error;
 
@@ -130,13 +130,7 @@ function _canImport(fileName, callingFileName, options) {
  */
 async function _importDirectory(dirPath, options={}) {
   const _options = _importDirectoryOptionsParser(options);
-  const modDefs = await _importDirectoryModules(dirPath, _options);
-
-  modDefs.forEach(([fileName, module])=>{
-    if ((_options.merge === true) && (!isFunction(module))) return Object.assign(_options.imports, module);
-    _options.imports[_getFileName(fileName, _options.extension)] = module;
-  });
-
+  await _importDirectoryModules(dirPath, _options);
   return _options.imports;
 }
 
@@ -188,30 +182,29 @@ async function tryLoading(files, source, options, failCount=files.length) {
   const retry = [];
   const modDefs = (await Promise.all(files.map(async (target)=> {
     if (_canImport(target, source, options)) {
-      let module;
-
-      if (!options.squashErrors) {
-        module = await require(options, target);
-	  } else {
-		  try {
-			  module = await require(options, target);
-		  } catch (error) {
-			  cache.delete(target);
-			  retry.push(target);
-			  if (options.onerror) errors.set(target, error);
-			  return;
-		  }
+      try {
+        const module = await require(options, target);
+        if (options.onload) options.onload(target, module);
+        if ((options.merge === true) && (!isFunction(module))) {
+          Object.assign(options.imports, module);
+        } else {
+          options.imports[_getFileName(target, options.extension)] = module;
+        }
+        return [target, module];
+      } catch (error) {
+        if (!options.squashErrors) throw error
+        cache.delete(target);
+        retry.push(target);
+        if (options.onerror) errors.set(target, error);
+        return;
       }
-
-      if (options.onload) options.onload(target, module);
-      return [target, module];
     }
   }))).filter(modDef=>modDef);
 
   if (!options.squashErrors || !retry.length || (failCount <= retry.length)) {
     if (options.onerror && (failCount <= retry.length) && (options.squashErrors)) {
       (retry || []).forEach(source=>options.onerror(new ErrorEvent({source, error:errors.get(source)})));
-	}
+    }
     return modDefs;
   }
   return tryLoading(retry, source, options, retry.length).then(_modDefs=>modDefs.concat(_modDefs));
