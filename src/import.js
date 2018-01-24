@@ -183,13 +183,14 @@ async function tryLoading(files, source, options, failCount=files.length) {
   const modDefs = (await Promise.all(files.map(async (target)=> {
     if (_canImport(target, source, options)) {
       try {
+        if ((options.reload === true) && (cache.has(target))) cache.delete(target);
         const module = await require(options, target);
-        if (options.onload) options.onload(target, module);
         if ((options.merge === true) && (!isFunction(module))) {
           Object.assign(options.imports, module);
         } else {
           options.imports[_getFileName(target, options.extension)] = module;
         }
+        if (options.onload) options.onload(target, module);
         return [target, module];
       } catch (error) {
         if (!options.squashErrors) throw error
