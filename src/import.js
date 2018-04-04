@@ -4,8 +4,8 @@ const path = require('path');
 const settings = require('./settings');
 const {requireAsync, requireSync} = require('./require');
 const {
-  isFunction, intersection, uniq, readDir, makeArray, flattenDeep,
-  getCallingFileName, getCallingDir, lstat
+  isFunction, intersection, readDir, makeArray, flattenDeep,
+  getCallingFileName, getCallingDir, lstat, chain
 } = require('./util');
 const cache = require('./cache');
 const ErrorEvent = require('./events').Error;
@@ -24,21 +24,24 @@ async function _filesInDirectory(dirPath, options) {
   let xExt = _getExtensionRegEx(options.extension || settings.get('extensions'));
 
   try {
-    const files = await readDir(resolvedDirPath);
+    const files = (await readDir(resolvedDirPath));
     if (options.rescursive) {
-      const fullPaths = files.map(fileName=>path.resolve(resolvedDirPath, fileName));
-      const dirs = (await Promise.all(fullPaths.map(async (file)=>{
-        const stat = await lstat(file);
-        if (stat.isDirectory()) return file;
-      }))).filter(file=>file);
-      if (dirs.length) {
-        const deepFiles = flattenDeep(await Promise.all(dirs.map(dirPath=>_filesInDirectory(dirPath, options))));
-        files.push(...deepFiles);
-      }
+      const dirs = chain(await Promise.all(chain(files)
+        .map(fileName=>path.resolve(resolvedDirPath, fileName))
+        .map(async (file)=>{
+          const stat = await lstat(file);
+          if (stat.isDirectory()) return file;
+        })
+        .value())).filter(file=>file);
+      if (dirs.value().length) files.push(...(await Promise.all(
+        dirs.map(dirPath=>_filesInDirectory(dirPath, options)).value()
+      )));
     }
-    return files
+    return chain(files)
+      .flattenDeep()
       .filter(fileName=>xExt.test(fileName))
-      .map(fileName=>path.resolve(resolvedDirPath, fileName));
+      .map(fileName=>path.resolve(resolvedDirPath, fileName))
+      .value();
   } catch (err) {
     return [];
   }
@@ -91,12 +94,11 @@ function _getExtensionRegEx(ext=settings.get('extensions')) {
  */
 function _getFileTests(fileName, options={}) {
   let extension =  makeArray(options.extension || settings.get('extensions'));
-  return uniq(
-    [path.basename(fileName)].concat(
-      extension.map(ext=>path.basename(fileName, ext)
-      )
-    )
-  ).filter(value=>value);
+  return chain([path.basename(fileName)])
+    .concat(extension.map(ext=>path.basename(fileName, ext)))
+    .filter(value=>value)
+    .uniq()
+    .value();
 }
 
 /**
@@ -180,25 +182,24 @@ async function tryLoading(files, source, options, failCount=files.length) {
   const errors = new Map();
   const require = (options.useSyncRequire ? requireSync : requireAsync);
   const retry = [];
-  const modDefs = (await Promise.all(files.map(async (target)=> {
-    if (_canImport(target, source, options)) {
-      try {
-        if ((options.reload === true) && (cache.has(target))) cache.delete(target);
-        const module = await require(options, target);
-        if ((options.merge === true) && (!isFunction(module))) {
-          Object.assign(options.imports, module);
-        } else {
-          options.imports[_getFileName(target, options.extension)] = module;
-        }
-        if (options.onload) options.onload(target, module);
-        return [target, module];
-      } catch (error) {
-        if (!options.squashErrors) throw error
-        cache.delete(target);
-        retry.push(target);
-        if (options.onerror) errors.set(target, error);
-        return;
+  const modDefs = (await Promise.all(files.map(async (target)=>{
+    if (!_canImport(target, source, options)) return;
+    try {
+      if ((options.reload === true) && (cache.has(target))) cache.delete(target);
+      const module = await require(options, target);
+      if ((options.merge === true) && (!isFunction(module))) {
+        Object.assign(options.imports, module);
+      } else {
+        options.imports[_getFileName(target, options.extension)] = module;
       }
+      if (options.onload) options.onload(target, module);
+      return [target, module];
+    } catch (error) {
+      if (!options.squashErrors) throw error
+      cache.delete(target);
+      retry.push(target);
+      if (options.onerror) errors.set(target, error);
+      return;
     }
   }))).filter(modDef=>modDef);
 

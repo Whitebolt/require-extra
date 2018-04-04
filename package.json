@@ -26,18 +26,7 @@
     "@babel/plugin-proposal-decorators": "^7.0.0-beta.35",
     "babel-polyfill": "^6.26.0",
     "callsite": "^1.0.0",
-    "lodash-provider": "^1.4.0",
-    "lodash.castarray": "^4.4.0",
-    "lodash.flattendeep": "^4.4.0",
-    "lodash.intersection": "^4.4.0",
-    "lodash.isboolean": "^3.0.3",
-    "lodash.isfunction": "^3.0.8",
-    "lodash.isobject": "^3.0.2",
-    "lodash.isstring": "^4.0.1",
-    "lodash.pick": "^4.4.0",
-    "lodash.uniq": "^4.5.0",
-    "lodash.values": "^4.3.0",
-    "lodash.without": "^4.4.0",
+    "lodash": "^4.17.5",
     "require-like": "^0.1.2",
     "resolve": "^1.5.0",
     "semver": "^5.4.1"
@@ -58,7 +47,6 @@
     "gulp-concat": "^2.6.1",
     "gulp-mocha": "^4.3.1",
     "jsdoc-api": "^4.0.0",
-    "lodash.clonedeep": "^4.5.0",
     "mocha": "^4.0.1",
     "vinyl-commonjs-dependencies": "^0.7.6"
   },
@@ -136,5 +124,5 @@
     ]
   },
   "engines": ">=4.0.0",
-  "version": "1.5.7"
+  "version": "1.5.8"
 }

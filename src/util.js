@@ -3,7 +3,7 @@
 const fs = require('fs');
 const path = require('path');
 const callsite = require('callsite');
-const util = require('lodash-provider');
+const lodash = require('lodash');
 const _util = require('util');
 let settings;
 
@@ -21,10 +21,10 @@ let loading = 0;
  * @param {Array|Set|*} value		Value to return or convert.
  * @returns {Array}					The converted value (or original if already an array).
  */
-util.makeArray = function makeArray(value, defaultValue) {
+lodash.makeArray = function makeArray(value, defaultValue) {
   if (value === undefined) return [];
   if (value instanceof Set) return [...value];
-  return util.castArray(value);
+  return lodash.castArray(value);
 };
 
 /**
@@ -33,7 +33,7 @@ util.makeArray = function makeArray(value, defaultValue) {
  * @param {Function} func     Function to promisify.
  * @returns {Function}        Promisified function.
  */
-util.promisify = function promisify(func) {
+lodash.promisify = function promisify(func) {
   if (_util.promisify) return _util.promisify(func);
 
   return (...params)=>{
@@ -57,7 +57,7 @@ util.promisify = function promisify(func) {
  * @private
  * @returns {string}      Filename of calling file.
  */
-util.getCallingFileName = function getCallingFileName() {
+lodash.getCallingFileName = function getCallingFileName() {
   /**
    * Generator for all the files in the current stack trace.
    *
@@ -85,9 +85,9 @@ util.getCallingFileName = function getCallingFileName() {
  * @param {string} resolveTo    The directory to resolve to.
  * @returns {string}            Directory path
  */
-util.getCallingDir = function getCallingDir(resolveTo) {
-  const filename = util.getCallingFileName();
-  if (filename) return path.resolve(...[path.dirname(filename), ...util.makeArray(resolveTo)]);
+lodash.getCallingDir = function getCallingDir(resolveTo) {
+  const filename = lodash.getCallingFileName();
+  if (filename) return path.resolve(...[path.dirname(filename), ...lodash.makeArray(resolveTo)]);
 };
 
 /**
@@ -97,7 +97,7 @@ util.getCallingDir = function getCallingDir(resolveTo) {
  * @param {Object} obj		The object to get properties for.
  * @returns {Set}			A set of all the property names.
  */
-util.getAllPropertyNames = function getAllPropertyNames(obj) {
+lodash.getAllPropertyNames = function getAllPropertyNames(obj) {
   const all = new Set();
 
   do {
@@ -114,7 +114,7 @@ util.getAllPropertyNames = function getAllPropertyNames(obj) {
  * @param {RequireExtraSettings|Map} settings   The module settings map.
  * @returns {Function}                          Wrapped function.
  */
-util.promiseLibraryWrap = function promiseLibraryWrap(func, settings) {
+lodash.promiseLibraryWrap = function promiseLibraryWrap(func, settings) {
   if (settings.has('Promise')) return settings.get('Promise').resolve(func);
   return func;
 };
@@ -126,9 +126,9 @@ util.promiseLibraryWrap = function promiseLibraryWrap(func, settings) {
  * @param {string} to           New method name.
  * @param {Object} exported     Object to wrap method on.
  */
-util.deprecated = function deprecated(from, to, exported) {
+lodash.deprecated = function deprecated(from, to, exported) {
   exported[from] = (...params)=>{
-    console.warn(`Use of ${from} is deprecated, please use ${to}() instead, it is exactly the same. This being used in ${util.getCallingFileName()}`);
+    console.warn(`Use of ${from} is deprecated, please use ${to}() instead, it is exactly the same. This being used in ${lodash.getCallingFileName()}`);
     return exported[to](...params);
   };
 };
@@ -140,9 +140,9 @@ util.deprecated = function deprecated(from, to, exported) {
  * @param {Object} to                        Object to reflect to.
  * @param {Array.<string>|string} methods    Method(s) to reflect.
  */
-util.reflect = function reflect(from, to, methods) {
-  util.makeArray(methods).forEach(property=>{
-    to[property] = (util.isFunction(from[property])?from[property].bind(from):from[property]);
+lodash.reflect = function reflect(from, to, methods) {
+  lodash.makeArray(methods).forEach(property=>{
+    to[property] = (lodash.isFunction(from[property])?from[property].bind(from):from[property]);
   });
 };
 
@@ -155,7 +155,7 @@ util.reflect = function reflect(from, to, methods) {
  * @param {boolean} [first=false]   Is this the first instance (do not lop, just add).
  * @returns {string}                Lopped and added path.
  */
-util.lopAdd = function lopAdd(path, addition, first=false) {
+lodash.lopAdd = function lopAdd(path, addition, first=false) {
   let parts = path.split('/').filter(part=>part);
   if ((parts[parts.length-1] === addition) && parts.length) parts.pop();
   if (parts.length && !first) parts.pop();
@@ -169,17 +169,17 @@ util.lopAdd = function lopAdd(path, addition, first=false) {
  * @param {string} path       Path to do iterations on.
  * @param {string} addition   Directory we are adding.
  */
-util.createLopAddIterator = function* createLopAddIterator(path, addition) {
-  path = util.lopAdd(path, addition, true);
+lodash.createLopAddIterator = function* createLopAddIterator(path, addition) {
+  path = lodash.lopAdd(path, addition, true);
   while (path !== `/${addition}`) {
     yield path;
-    path = util.lopAdd(path, addition);
+    path = lodash.lopAdd(path, addition);
   }
   yield path;
 };
 
-util.readDir = util.promisify(fs.readdir);
-util.lstat = util.promisify(fs.lstat);
+lodash.readDir = lodash.promisify(fs.readdir);
+lodash.lstat = lodash.promisify(fs.lstat);
 
 const readFileCallbacks = new Map();
 
@@ -297,7 +297,7 @@ function _readFileOnError(filename, error) {
  * @param {null|string} [encoding=null]   The encoding to load as.
  * @returns {Promise.<Buffer|*>}          The load results.
  */
-util.readFile = function readFile(filename, cache, encoding=null) {
+lodash.readFile = function readFile(filename, cache, encoding=null) {
   if (cache.has(filename)) return _handleFileInCache(filename, cache);
   _addReadCallbacks(filename, cache);
   fileQueue.push(()=>{
@@ -319,7 +319,7 @@ util.readFile = function readFile(filename, cache, encoding=null) {
  * @param {null|strin} [encoding=null]    The encoding to use.
  * @returns {Buffer\*}                    The file contents as a buffer.
  */
-util.readFileSync = function readFileSync(filename, cache, encoding=null) {
+lodash.readFileSync = function readFileSync(filename, cache, encoding=null) {
   if (cache.has(filename) && (cache.get(filename) !== true)) return cache.get(filename);
   const data = fs.readFileSync(filename, encoding);
   cache.set(filename, data);
@@ -332,7 +332,7 @@ util.readFileSync = function readFileSync(filename, cache, encoding=null) {
  * @public
  * @returns {Function}
  */
-util.getRequire = function getRequire() {
+lodash.getRequire = function getRequire() {
   try {
     return __require;
   } catch(err) {
@@ -340,4 +340,4 @@ util.getRequire = function getRequire() {
   }
 };
 
-module.exports = util;
+module.exports = lodash;
