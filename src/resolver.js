@@ -1,7 +1,7 @@
 'use strict';
 
 const settings = require('./settings');
-const {uniq, flattenDeep, pick, promisify, makeArray, without, getCallingFileName} = require('./util');
+const {uniq, flattenDeep, pick, promisify, makeArray, without, chain} = require('./util');
 const Private = require("./Private");
 const path = require('path');
 
@@ -18,6 +18,7 @@ const otherOptions = ['parent', 'useSandbox', 'useSyncRequire', 'merge', 'scope'
 const toExport = ['moduleDirectory', 'parent', 'useSandbox', 'useSyncRequire', 'merge', 'scope', 'options', 'squashErrors'];
 
 const cache = new Map();
+const pathsLookup = new WeakMap();
 
 
 function _importOptions(instance, options={}) {
@@ -53,6 +54,39 @@ function set(moduleId, moduleDirectory, basedir, resolved) {
   return resolved;
 }
 
+function isChildOf(child, parent) {
+  return (child.substring(0, parent.length) === parent);
+}
+
+function getPaths(dir, options) {
+  const roots = settings.get('roots');
+  if (roots) {
+    if (!pathsLookup.has(roots)) pathsLookup.set(roots, new Map());
+    const found = roots.findIndex((rootPath, n)=>(isChildOf(dir, rootPath) && (n>0)));
+    if (found >= 0) {
+      if (pathsLookup.get(roots).has(found)) return pathsLookup.get(roots).get(found);
+      const paths = chain(roots.slice(0, found))
+          .map(root=>{
+            let cPath = '/';
+            return chain(root.split(path.sep))
+                .map(part=>{
+                  cPath = path.join(cPath, part);
+                  return path.join(cPath, options.moduleDirectory || 'node_modules');
+                })
+                .value();
+          })
+          .flatten()
+          .reverse()
+          .uniq()
+          .value();
+      pathsLookup.get(roots).set(found, paths);
+      return paths;
+    }
+  }
+
+  return [];
+}
+
 class Resolver {
   constructor(options) {
     _importOptions(this, options);
@@ -63,6 +97,8 @@ class Resolver {
 
   resolve(moduleId, dir, cb) {
     const options = Object.assign(pick(this, allowedOptions), {basedir:dir || __dirname});
+    options.paths = [...(options.paths||[]),...getPaths(dir, options)];
+
     if (has(moduleId, options.moduleDirectory, options.basedir)) {
       const resolved = get(moduleId, options.moduleDirectory, options.basedir);
       if (!cb) return Promise.resolve(resolved);
@@ -83,6 +119,8 @@ class Resolver {
 
   resolveSync(moduleId, dir) {
     const options = Object.assign(pick(this, allowedOptions), {basedir:dir || __dirname});
+    options.paths = [...(options.paths||[]),...getPaths(dir, options)];
+
     if (has(moduleId, options.moduleDirectory, options.basedir)) {
       return get(moduleId, options.moduleDirectory, options.basedir);
     }
