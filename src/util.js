@@ -3,7 +3,7 @@
 const path = require('path');
 const callsite = require('callsite');
 const _util = require('util');
-const lodash = require('lodash');
+const lodash = require('lodash').runInContext();
 
 Object.assign(
   lodash,
