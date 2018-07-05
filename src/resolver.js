@@ -1,16 +1,26 @@
 'use strict';
 
 const settings = require('./settings');
-const {uniq, flattenDeep, pick, promisify, makeArray, without, chain} = require('./util');
 const Private = require("./Private");
 const Triple_Map = require("./Triple_Map");
-const $private = new Private();
 const path = require('path');
-const fs = require('fs');
-const {isDirectory, isDirectorySync, isFile, isFileSync} = require('./fs');
+const {
+  isDirectory,
+  isDirectorySync,
+  isFile,
+  isFileSync,
+  uniq,
+  flattenDeep,
+  pick,
+  promisify,
+  makeArray,
+  without,
+  chain
+} = require('./util');
 
 const cache = new Triple_Map();
 const pathsLookup = new Private();
+const $private = new Private();
 
 const _resolveLike = Object.freeze([
   'resolve',

@@ -1,20 +1,25 @@
 'use strict';
 
-const fs = require('fs');
 const path = require('path');
 const callsite = require('callsite');
-const lodash = require('lodash');
 const _util = require('util');
-const {lstat, readDir} = require('./fs');
+const lodash = require('lodash');
 
-const readFileCallbacks = new Map();
-let settings;
-
-const fileQueue = [];
-let loading = 0;
-
-lodash.lstat = lstat;
-lodash.readDir = readDir;
+Object.assign(
+  lodash,
+  lodash.pick(require('./fs'), [
+    'lstat',
+    'stat',
+    'statSync',
+    'readDir',
+    'readFile',
+    'readFileSync',
+    'isFile',
+    'isFileSync',
+    'isDirectory',
+    'isDirectorySync'
+  ])
+);
 
 
 /**
@@ -182,149 +187,6 @@ lodash.createLopAddIterator = function* createLopAddIterator(path, addition) {
     path = lodash.lopAdd(path, addition);
   }
   yield path;
-};
-
-/**
- * Add a callback for reading of given file.
- *
- * @private
- * @param {string} filename           File to set callback for.
- * @returns {Promise.<Buffer|*>}      The file contents, once loaded.
- */
-function _addReadCallback(filename) {
-  return new Promise((resolve, reject)=> {
-    readFileCallbacks.get(filename).add((err, data)=> {
-      if (err) return reject(err);
-      return resolve(data);
-    });
-  });
-}
-
-/**
- * Add callbacks set for given file
- *
- * @private
- * @param {string} filename     File to add for.
- * @param {Map} cache           Cache to use.
- * @returns {Set}               The callbacks.
- */
-function _addReadCallbacks(filename, cache) {
-  const callbacks = new Set();
-  cache.set(filename, true);
-  readFileCallbacks.set(filename, callbacks);
-  return callbacks;
-}
-
-/**
- * Return cached file if already loaded or set a callback if currently loading/in-queue.
- *
- *
- * @param {string} filename           File to get from cache.
- * @param {Map} cache                 The cache to use.
- * @returns {Promise.<Buffer|*>}      The file contents.
- */
-async function _handleFileInCache(filename, cache) {
-  if (cache.get(filename) !== true) return cache.get(filename);
-  return _addReadCallback(filename);
-}
-
-/**
- * Fire any awaiting callbacks for given file data.
- *
- * @private
- * @param {string} filename           The filename to fire callbacks on.
- * @param {Buffer|Error} data         The received data.
- * @param {boolean} [error=false]     Is this an error or file data?
- */
-function _fireReadFileCallbacks(filename, data, error=false) {
-  const callbacks = readFileCallbacks.get(filename);
-  if (callbacks) {
-    if (callbacks.size) callbacks.forEach(callback=>error?callback(data, null):callback(null, data));
-    callbacks.clear();
-    readFileCallbacks.delete(filename);
-  }
-}
-
-/**
- * File queue handler.
- *
- * @private
- */
-function _runFileQueue() {
-  if (!settings) settings = require('./settings');
-  const simultaneous = settings.get('load-simultaneously') || 10;
-
-  if ((loading < simultaneous) && (fileQueue.length)) {
-    loading++;
-    fileQueue.shift()();
-  }
-}
-
-/**
- * On end listener for readFile.
- *
- * @private
- * @param {string} filename           The filename.
- * @param {Array.<Buffer>} contents   The file contents as a series of buffers.
- * @param {Map} cache                 The file cache.
- */
-function _readFileOnEnd(filename, contents, cache) {
-  loading--;
-  const data = Buffer.concat(contents);
-  cache.set(filename, data);
-  _fireReadFileCallbacks(filename, data);
-  _runFileQueue();
-}
-
-/**
- * On error listener for readFile.
- *
- * @private
- * @param {string} filename     The filename.
- * @param {Error} error         The error fired.
- */
-function _readFileOnError(filename, error) {
-  loading--;
-  _fireReadFileCallbacks(filename, error);
-  _runFileQueue();
-}
-
-/**
- * Load a file synchronously using a cache.
- *
- * @public
- * @param {string} filename               The file to load.
- * @param {Map} cache                     The cache to use.
- * @param {null|string} [encoding=null]   The encoding to load as.
- * @returns {Promise.<Buffer|*>}          The load results.
- */
-lodash.readFile = function readFile(filename, cache, encoding=null) {
-  if (cache.has(filename)) return _handleFileInCache(filename, cache);
-  _addReadCallbacks(filename, cache);
-  fileQueue.push(()=>{
-    const contents = [];
-    fs.createReadStream(filename, {encoding})
-      .on('data', chunk=>contents.push(chunk))
-      .on('end', ()=>_readFileOnEnd(filename, contents, cache))
-      .on('error', error=>_readFileOnError(filename, error))
-  });
-  _runFileQueue();
-  return _handleFileInCache(filename, cache);
-};
-
-/**
- * Read a file synchronously using file cache.
- *
- * @param {string} filename               The filename to load.
- * @param {Map} cache                     The cache to use.
- * @param {null|strin} [encoding=null]    The encoding to use.
- * @returns {Buffer\*}                    The file contents as a buffer.
- */
-lodash.readFileSync = function readFileSync(filename, cache, encoding=null) {
-  if (cache.has(filename) && (cache.get(filename) !== true)) return cache.get(filename);
-  const data = fs.readFileSync(filename, encoding);
-  cache.set(filename, data);
-  return data;
 };
 
 /**
