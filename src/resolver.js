@@ -3,8 +3,14 @@
 const settings = require('./settings');
 const {uniq, flattenDeep, pick, promisify, makeArray, without, chain} = require('./util');
 const Private = require("./Private");
+const Triple_Map = require("./Triple_Map");
+const $private = new Private();
 const path = require('path');
 const fs = require('fs');
+
+const cache = new Triple_Map();
+const pathsLookup = new Private();
+const [statDir, statFile, statCache] = [new Map(), new Map, new Map()];
 
 const _resolveLike = Object.freeze([
   'resolve',
@@ -63,83 +69,6 @@ function _importOptions(instance, options={}) {
 
   Object.assign(instance, pick(_options, allowedOptions), pick(_options, otherOptions));
 }
-
-class Resolve_Cache extends Map {
-  has(moduleId, moduleDirectory, basedir) {
-    return (
-      super.has(moduleId) &&
-      super.get(moduleId).has(moduleDirectory) &&
-      super.get(moduleId).get(moduleDirectory).has(basedir)
-    );
-  }
-
-  get(moduleId, moduleDirectory, basedir) {
-    if (!this.has(moduleId, moduleDirectory, basedir)) return;
-    return super.get(moduleId).get(moduleDirectory).get(basedir);
-  }
-
-  set(moduleId, moduleDirectory, basedir, resolved) {
-    if (!this.has(moduleId, moduleDirectory, basedir)) {
-      if (!super.has(moduleId)) super.set(moduleId, new Map());
-      if (!super.get(moduleId).has(moduleDirectory)) super.get(moduleId).set(moduleDirectory, new Map());
-    }
-    super.get(moduleId).get(moduleDirectory).set(basedir, resolved);
-
-    return resolved;
-  }
-
-  delete(moduleId, moduleDirectory, basedir) {
-    if (!moduleDirectory && !basedir) return super.delete(moduleId);
-    if (!!moduleDirectory && !basedir && super.has(moduleId)) {
-      return super.get(moduleId).delete(moduleDirectory);
-    }
-    if (this.has(moduleId, moduleDirectory, basedir)) {
-      return super.get(moduleId).get(moduleDirectory).delete(basedir);
-    }
-    return true;
-  }
-
-  get size() {
-    let size = 0;
-    [...super.keys()].forEach(moduleId=>
-      [...super.get(moduleId).keys()].forEach(moduleDirectory=>{
-        size += super.get(moduleId).get(moduleDirectory).size;
-      })
-    );
-    return size;
-  }
-}
-
-class Paths_Cache extends WeakMap {
-  get(roots, found) {
-    if (!super.has(roots)) return undefined;
-    return super.get(roots).get(found);
-  }
-
-  set(roots, found, paths) {
-    if (!super.has(roots)) super.set(roots, new Map());
-    return super.get(roots).set(found, paths);
-  }
-
-  has(roots, found) {
-    if (!super.has(roots)) return false;
-    return super.get(roots).has(found);
-  }
-
-  delete(roots, found) {
-    if (this.has(roots, found)) return super.get(roots).delete(found);
-    if ((found === undefined) && this.has(roots)) return super.delete(roots);
-    return true;
-  }
-
-  clear(roots) {
-    if (super.has(roots)) return super.get(roots).clear();
-  }
-}
-
-const cache = new Resolve_Cache();
-const pathsLookup = new Paths_Cache();
-const [statDir, statFile, statCache] = [new Map(), new Map, new Map()];
 
 function isChildOf(child, parent) {
   return (child.substring(0, parent.length) === parent);
@@ -338,11 +267,11 @@ class Resolver {
   }
 
   get extensions() {
-    return Private.get(this, 'extensions', Array);
+    return makeArray($private.get(this, 'extensions'));
   }
 
   set extensions(value) {
-    Private.set(this, 'extensions', makeArray(value));
+    $private.set(this, 'extensions', makeArray(value));
     return true;
   }
 

@@ -2,10 +2,20 @@
 
 const path = require('path');
 const settings = require('./settings');
-const {requireAsync, requireSync} = require('./require');
 const {
-  isFunction, intersection, readDir, makeArray, flattenDeep,
-  getCallingFileName, getCallingDir, lstat, chain
+  requireAsync,
+  requireSync
+} = require('./require');
+const {
+  isFunction,
+  intersection,
+  readDir,
+  makeArray,
+  flattenDeep,
+  getCallingFileName,
+  getCallingDir,
+  lstat,
+  chain
 } = require('./util');
 const cache = require('./cache');
 const ErrorEvent = require('./events').Error;

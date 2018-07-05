@@ -31,7 +31,6 @@ AsyncEventEmitter.prototype.constructor = AsyncEventEmitter;
 
 
 var emitter = new AsyncEventEmitter();
-var Private = require("./Private");
 
 function _setFreeze(instance) {
   var freezer = {freeze:false};
