@@ -113,7 +113,13 @@ function _loadModuleText(target, source, sync=false) {
 
   const loaded = txt=>{
     try {
-      const loadedEvent = emitter.emit('loaded', new emitter.Loaded({target, duration: process.hrtime(time), source, sync}));
+      const loadedEvent = emitter.emit('loaded', new emitter.Loaded({
+        target,
+        duration: process.hrtime(time),
+        size: txt.length,
+        source,
+        sync
+      }));
       return sync?txt:loadedEvent.then(()=>txt,loadError);
     } catch (error) {
       return loadError(error);

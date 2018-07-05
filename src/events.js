@@ -91,6 +91,7 @@ function Loaded_Event(config) {
   this.type = 'loaded';
   this.source = config.source;
   this.duration = config.duration;
+  this.size = config.size;
   _doFreeze(this, freezer);
 }
 

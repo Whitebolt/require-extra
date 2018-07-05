@@ -216,6 +216,10 @@ class Resolver {
     console.warn(`This method is deprecated, please use new Resolver(<options>) instead. This being used in ${getCallingFileName()}`);
     return new Resolver(options);
   };
+
+  get [Symbol.toStringTag]() {
+    return 'Resolver';
+  }
 }
 
 module.exports = Resolver;
