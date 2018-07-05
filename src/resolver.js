@@ -4,21 +4,52 @@ const settings = require('./settings');
 const {uniq, flattenDeep, pick, promisify, makeArray, without, chain} = require('./util');
 const Private = require("./Private");
 const path = require('path');
+const fs = require('fs');
 
-const _resolveLike = ['resolve', 'extensions', 'getState', 'isCoreModule', 'addExtenstions', 'removeExtensions'];
-Object.freeze(_resolveLike);
+const _resolveLike = Object.freeze([
+  'resolve',
+  'extensions',
+  'getState',
+  'isCoreModule',
+  'addExtenstions',
+  'removeExtensions'
+]);
 
 const allowedOptions = [
-  'basedir', 'package', 'extensions', 'readFile', 'isFile', 'packageFilter',
-  'pathFilter', 'paths', 'moduleDirectory', 'preserveSymlinks'
+  'basedir',
+  'package',
+  'extensions',
+  'readFile',
+  'isFile',
+  'isDirectory',
+  'packageFilter',
+  'pathFilter',
+  'paths',
+  'moduleDirectory',
+  'preserveSymlinks'
 ];
 
-const otherOptions = ['parent', 'useSandbox', 'useSyncRequire', 'merge', 'scope', 'options', 'squashErrors'];
+const otherOptions = [
+  'parent',
+  'useSandbox',
+  'useSyncRequire',
+  'merge',
+  'scope',
+  'options',
+  'squashErrors'
+];
 
-const toExport = ['moduleDirectory', 'parent', 'useSandbox', 'useSyncRequire', 'merge', 'scope', 'options', 'squashErrors'];
+const toExport = [
+  'moduleDirectory',
+  'parent',
+  'useSandbox',
+  'useSyncRequire',
+  'merge',
+  'scope',
+  'options',
+  'squashErrors'
+];
 
-const cache = new Map();
-const pathsLookup = new WeakMap();
 
 
 function _importOptions(instance, options={}) {
@@ -33,26 +64,82 @@ function _importOptions(instance, options={}) {
   Object.assign(instance, pick(_options, allowedOptions), pick(_options, otherOptions));
 }
 
-function has(moduleId, moduleDirectory, basedir) {
-  return (
-    cache.has(moduleId) &&
-    cache.get(moduleId).has(moduleDirectory) &&
-    cache.get(moduleId).get(moduleDirectory).has(basedir)
-  );
+class Resolve_Cache extends Map {
+  has(moduleId, moduleDirectory, basedir) {
+    return (
+      super.has(moduleId) &&
+      super.get(moduleId).has(moduleDirectory) &&
+      super.get(moduleId).get(moduleDirectory).has(basedir)
+    );
+  }
+
+  get(moduleId, moduleDirectory, basedir) {
+    if (!this.has(moduleId, moduleDirectory, basedir)) return;
+    return super.get(moduleId).get(moduleDirectory).get(basedir);
+  }
+
+  set(moduleId, moduleDirectory, basedir, resolved) {
+    if (!this.has(moduleId, moduleDirectory, basedir)) {
+      if (!super.has(moduleId)) super.set(moduleId, new Map());
+      if (!super.get(moduleId).has(moduleDirectory)) super.get(moduleId).set(moduleDirectory, new Map());
+    }
+    super.get(moduleId).get(moduleDirectory).set(basedir, resolved);
+
+    return resolved;
+  }
+
+  delete(moduleId, moduleDirectory, basedir) {
+    if (!moduleDirectory && !basedir) return super.delete(moduleId);
+    if (!!moduleDirectory && !basedir && super.has(moduleId)) {
+      return super.get(moduleId).delete(moduleDirectory);
+    }
+    if (this.has(moduleId, moduleDirectory, basedir)) {
+      return super.get(moduleId).get(moduleDirectory).delete(basedir);
+    }
+    return true;
+  }
+
+  get size() {
+    let size = 0;
+    [...super.keys()].forEach(moduleId=>
+      [...super.get(moduleId).keys()].forEach(moduleDirectory=>{
+        size += super.get(moduleId).get(moduleDirectory).size;
+      })
+    );
+    return size;
+  }
 }
 
-function get(moduleId, moduleDirectory, basedir) {
-  if (!has(moduleId, moduleDirectory, basedir)) return;
-  return cache.get(moduleId).get(moduleDirectory).get(basedir);
+class Paths_Cache extends WeakMap {
+  get(roots, found) {
+    if (!super.has(roots)) return undefined;
+    return super.get(roots).get(found);
+  }
+
+  set(roots, found, paths) {
+    if (!super.has(roots)) super.set(roots, new Map());
+    return super.get(roots).set(found, paths);
+  }
+
+  has(roots, found) {
+    if (!super.has(roots)) return false;
+    return super.get(roots).has(found);
+  }
+
+  delete(roots, found) {
+    if (this.has(roots, found)) return super.get(roots).delete(found);
+    if ((found === undefined) && this.has(roots)) return super.delete(roots);
+    return true;
+  }
+
+  clear(roots) {
+    if (super.has(roots)) return super.get(roots).clear();
+  }
 }
 
-function set(moduleId, moduleDirectory, basedir, resolved) {
-  if (!cache.has(moduleId)) cache.set(moduleId, new Map());
-  if (!cache.get(moduleId).has(moduleDirectory)) cache.get(moduleId).set(moduleDirectory, new Map());
-  cache.get(moduleId).get(moduleDirectory).set(basedir, resolved);
-
-  return resolved;
-}
+const cache = new Resolve_Cache();
+const pathsLookup = new Paths_Cache();
+const [statDir, statFile, statCache] = [new Map(), new Map, new Map()];
 
 function isChildOf(child, parent) {
   return (child.substring(0, parent.length) === parent);
@@ -60,31 +147,141 @@ function isChildOf(child, parent) {
 
 function getPaths(dir, options) {
   const roots = settings.get('roots');
-  if (roots) {
-    if (!pathsLookup.has(roots)) pathsLookup.set(roots, new Map());
-    const found = roots.findIndex((rootPath, n)=>(isChildOf(dir, rootPath) && (n>0)));
-    if (found >= 0) {
-      if (pathsLookup.get(roots).has(found)) return pathsLookup.get(roots).get(found);
-      const paths = chain(roots.slice(0, found))
-          .map(root=>{
-            let cPath = '/';
-            return chain(root.split(path.sep))
-                .map(part=>{
-                  cPath = path.join(cPath, part);
-                  return path.join(cPath, options.moduleDirectory || 'node_modules');
-                })
-                .value();
-          })
-          .flatten()
-          .reverse()
-          .uniq()
-          .value();
-      pathsLookup.get(roots).set(found, paths);
-      return paths;
+  if (!roots) return [];
+
+  const found = roots.findIndex((rootPath, n)=>(isChildOf(dir, rootPath) && (n>0)));
+  if (found < 0) return [];
+  if (pathsLookup.has(roots, found)) return pathsLookup.get(roots, found);
+
+  const paths = chain(roots.slice(0, found))
+    .map(root=>{
+      let cPath = '/';
+      return chain(root.split(path.sep))
+        .map(part=>{
+          cPath = path.join(cPath, part);
+          return path.join(cPath, options.moduleDirectory || 'node_modules');
+        })
+        .value();
+    })
+    .flatten()
+    .reverse()
+    .uniq()
+    .value();
+
+  pathsLookup.set(roots, found, paths);
+  return paths;
+}
+
+function resolve(moduleId, options, sync=false) {
+  const {moduleDirectory, basedir} = options;
+  if (cache.has(moduleId, moduleDirectory, basedir)) return cache.get(moduleId, moduleDirectory, basedir);
+  const resolver = settings.get('resolveModule');
+  if (!sync) return promisify(resolver)(moduleId, options).then(resolved=>{
+    cache.set(moduleId, moduleDirectory, basedir, resolved);
+    return resolved;
+  });
+
+  const resolved = resolver.sync(moduleId, options);
+  cache.set(moduleId, moduleDirectory, basedir, resolved);
+  return resolved;
+}
+
+function statAsync(file, cb) {
+  if (statCache.has(file)) {
+    const result =  statCache.get(file);
+    if (!result[0]) return cb(null, result[1]);
+    return cb(result[0], null);
+  }
+  fs.stat(file, function(err, stat) {
+    if (!err) {
+      statCache.set(file, [null, stat]);
+      return cb(null, stat);
+    }
+    statCache.set(file, [err, null]);
+    return cb(err, null);
+  });
+}
+
+function statSync(file) {
+  if (statCache.has(file)) {
+    const result =  statCache.get(file);
+    if (!result[0]) return result[1];
+    throw result[0];
+  } else {
+    try {
+      var stat = fs.statSync(file);
+      statCache.set(file, [null, stat]);
+      return stat;
+    } catch (err) {
+      statCache.set(file, [err, null]);
+      throw err;
     }
   }
+}
 
-  return [];
+function statAction(err, stat, cb) {
+  if (!err) return (!!cb?cb(null, stat):stat);
+  if (err.code === 'ENOENT' || err.code === 'ENOTDIR') return (!!cb?cb(null, false):false);
+  return (!!cb?cb(err):err);
+}
+
+function isFile(file, cb) {
+  if (statFile.has(file)) return statAction(...statFile.get(file), cb);
+  isDirectory(path.dirname(file), (err, isDir)=>{
+    if (!!err) {
+      statFile.set(file, [err, null]);
+      return statAction(err, null, cb);
+    } else if (!isDir) {
+      statFile.set(file, [null, false]);
+      return statAction(null, false, cb);
+    }
+
+    statAsync(file, function(err, stat) {
+      if (!err) {
+        statFile.set(file, [null, stat.isFile() || stat.isFIFO()]);
+        return statAction(null, statFile.get(file)[1], cb);
+      }
+      statFile.set(file, [err, null]);
+      return statAction(err, null, cb);
+    });
+  });
+}
+
+function isFileSync(file) {
+  if (statFile.has(file)) return statAction(...statFile.get(file));
+  if (!isDirectorySync(path.dirname(file))) return false;
+  try {
+    const stat = statSync(file);
+    statFile.set(file, [null, stat.isFile() || stat.isFIFO()]);
+    return statAction(null, statFile.get(file)[1]);
+  } catch (err) {
+    statFile.set(file, [err, null]);
+    return statAction(err, null);
+  }
+}
+
+function isDirectory(dir, cb) {
+  if (statDir.has(dir)) return statAction(...statDir.get(dir), cb);
+  statAsync(dir, function(err, stat) {
+    if (!err) {
+      statDir.set(dir, [null, stat.isDirectory()]);
+      return statAction(null, statDir.get(dir)[1], cb);
+    }
+    statDir.set(dir, [err, null]);
+    return statAction(err, null, cb);
+  });
+}
+
+function isDirectorySync(dir) {
+  if (statDir.has(dir)) return statAction(...statDir.get(dir));
+  try {
+    const stat = statSync(dir);
+    statDir.set(dir, [null, stat.isDirectory()]);
+    return statAction(null, statDir.get(dir)[1]);
+  } catch (err) {
+    statDir.set(dir, [err, null]);
+    return statAction(err, null);
+  }
 }
 
 class Resolver {
@@ -96,36 +293,24 @@ class Resolver {
   }
 
   resolve(moduleId, dir, cb) {
-    const options = Object.assign(pick(this, allowedOptions), {basedir:dir || __dirname});
-    options.paths = [...(options.paths||[]),...getPaths(dir, options)];
+    const options = Object.assign(pick(this, allowedOptions), {
+      basedir:dir || __dirname,
+      isDirectory, isFile
+    });
 
-    if (has(moduleId, options.moduleDirectory, options.basedir)) {
-      const resolved = get(moduleId, options.moduleDirectory, options.basedir);
-      if (!cb) return Promise.resolve(resolved);
-      cb(resolved);
-    } else {
-      const resolver = settings.get('resolveModule');
-      if (cb) {
-        resolver(moduleId, options, resolved=>{
-          cb(set(moduleId, options.moduleDirectory, options.basedir, resolved));
-        });
-      } else {
-        return promisify(resolver)(moduleId, options).then(resolved=>{
-          return set(moduleId, options.moduleDirectory, options.basedir, resolved);
-        });
-      }
-    }
+    options.paths = [...(options.paths||[]), ...getPaths(dir, options)];
+    if (!cb) return resolve(moduleId, options);
+    return resolve(moduleId, options).then(resolved=>cb(null, resolved), err=>cb(err, null));
   }
 
   resolveSync(moduleId, dir) {
-    const options = Object.assign(pick(this, allowedOptions), {basedir:dir || __dirname});
+    const options = Object.assign(pick(this, allowedOptions), {
+      basedir:dir || __dirname,
+      isDirectory: isDirectorySync,
+      isFile: isFileSync
+    });
     options.paths = [...(options.paths||[]),...getPaths(dir, options)];
-
-    if (has(moduleId, options.moduleDirectory, options.basedir)) {
-      return get(moduleId, options.moduleDirectory, options.basedir);
-    }
-    const resolver = settings.get('resolveModule');
-    return set(moduleId, options.moduleDirectory, options.basedir, resolver.sync(moduleId, options));
+    return resolve(moduleId, options, true);
   }
 
   addExtensions(...ext) {
