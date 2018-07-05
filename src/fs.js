@@ -4,19 +4,36 @@ const fs = require('fs');
 const path = require('path');
 const promisify = require('util').promisify || Promise.promisify || require('./util').promisify;
 
-const readDir = (!!fs.promises ? fs.promises.readdir : promisify(fs.readdir));
+const _readDir = (!!fs.promises ? fs.promises.readdir : promisify(fs.readdir));
 
 const readFileCallbacks = new Map();
 let settings;
 
 let loading = 0;
-const {statDir, statFile, statCache, lStatCache, fileQueue} = require('./stores');
+const {statDir, statFile, statCache, lStatCache, fileQueue, readDirCache} = require('./stores');
 
 const _statPromise = promisify(_stat);
 const _lstatPromise = promisify(_lstat);
 const _isFilePromise = promisify(_isFile);
 const _isDirectoryPromise = promisify(_isDirectory);
 
+
+async function readDir(dir) {
+  if (readDirCache.has(dir)) {
+    const results = readDirCache.get(dir);
+    if (!results[0]) return results[1];
+    return Promise.reject(results[0]);
+  }
+
+  try {
+    const files = await _readDir(dir);
+    readDirCache.set(dir, [null, files]);
+    return files;
+  } catch(err) {
+    readDirCache.set(dir, [err, undefined]);
+    return Promise.reject(err);
+  }
+}
 
 function lstat(file, cb) {
   if (cb) return _lstat(file, cb);
