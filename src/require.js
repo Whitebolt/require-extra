@@ -10,9 +10,9 @@ const path = require('path');
 const toNamespacedPath = path.toNamespacedPath ? path.toNamespacedPath : path=>path;
 const {isString, isFunction, readFile, readFileSync, getCallingDir, promisify, getRequire} = require('./util');
 const emitter = require('./events');
+const {fileCache} = require('./stores');
 
 const _xRequireExtract = /\brequire\s*?\(\s*?[\"\'](.*?)[\"\']\*?\)/g;
-const fileCache = new Map();
 
 
 settings.set('load-simultaneously', 1000);

@@ -56,6 +56,12 @@ class Triple_Map extends Map {
     return size;
   }
 
+  clear(key1, key2) {
+    if (!key1 && !key2) return super.clear();
+    if (!key2) return this.get(key1).clear();
+    return this.get(key1, key2).clear();
+  }
+
   get [Symbol.toStringTag]() {
     return 'Triple_Map';
   }

@@ -2,13 +2,14 @@
 
 const settings = require('./settings');
 const Private = require("./Private");
-const Triple_Map = require("./Triple_Map");
 const path = require('path');
 const {
   isDirectory,
   isDirectorySync,
   isFile,
   isFileSync,
+  nodeReadFile,
+  readFileSync,
   uniq,
   flattenDeep,
   pick,
@@ -17,9 +18,9 @@ const {
   without,
   chain
 } = require('./util');
+const {fileCache, pathsLookup, resolveCache} = require('./stores');
 
-const cache = new Triple_Map();
-const pathsLookup = new Private();
+
 const $private = new Private();
 
 const _resolveLike = Object.freeze([
@@ -113,15 +114,15 @@ function getPaths(dir, options) {
 
 function resolve(moduleId, options, sync=false) {
   const {moduleDirectory, basedir} = options;
-  if (cache.has(moduleId, moduleDirectory, basedir)) return cache.get(moduleId, moduleDirectory, basedir);
+  if (resolveCache.has(moduleId, moduleDirectory, basedir)) return resolveCache.get(moduleId, moduleDirectory, basedir);
   const resolver = settings.get('resolveModule');
   if (!sync) return promisify(resolver)(moduleId, options).then(resolved=>{
-    cache.set(moduleId, moduleDirectory, basedir, resolved);
+    resolveCache.set(moduleId, moduleDirectory, basedir, resolved);
     return resolved;
   });
 
   const resolved = resolver.sync(moduleId, options);
-  cache.set(moduleId, moduleDirectory, basedir, resolved);
+  resolveCache.set(moduleId, moduleDirectory, basedir, resolved);
   return resolved;
 }
 
@@ -136,7 +137,9 @@ class Resolver {
   resolve(moduleId, dir, cb) {
     const options = Object.assign(pick(this, allowedOptions), {
       basedir:dir || __dirname,
-      isDirectory, isFile
+      isDirectory,
+      isFile,
+      readFile: (...params)=>nodeReadFile(fileCache, ...params)
     });
 
     options.paths = [...(options.paths||[]), ...getPaths(dir, options)];
@@ -148,7 +151,8 @@ class Resolver {
     const options = Object.assign(pick(this, allowedOptions), {
       basedir:dir || __dirname,
       isDirectory: isDirectorySync,
-      isFile: isFileSync
+      isFile: isFileSync,
+      readFile: (path, {encoding=null})=>readFileSync(path, fileCache, encoding)
     });
     options.paths = [...(options.paths||[]),...getPaths(dir, options)];
     return resolve(moduleId, options, true);

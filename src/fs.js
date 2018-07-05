@@ -9,9 +9,8 @@ const readDir = (!!fs.promises ? fs.promises.readdir : promisify(fs.readdir));
 const readFileCallbacks = new Map();
 let settings;
 
-const fileQueue = [];
 let loading = 0;
-const [statDir, statFile, statCache, lStatCache] = [new Map(), new Map, new Map(), new Map()];
+const {statDir, statFile, statCache, lStatCache, fileQueue} = require('./stores');
 
 const _statPromise = promisify(_stat);
 const _lstatPromise = promisify(_lstat);
@@ -326,6 +325,20 @@ function readFile(filename, cache, encoding=null) {
   return _handleFileInCache(filename, cache);
 }
 
+function nodeReadFile(cache, filename, options, cb) {
+  const _cb = (!cb?options:cb);
+  const _options = (!cb?{encoding:null}:options);
+
+  return readFile(filename, cache, _options.encoding)
+    .then(data=>{
+      _cb(null, data);
+      return data;
+    }, err=>{
+      _cb(err);
+      return Promise.reject(err);
+    });
+}
+
 /**
  * Read a file synchronously using file cache.
  *
@@ -341,6 +354,9 @@ function readFileSync(filename, cache, encoding=null) {
   return data;
 }
 
+
+
 module.exports = {
-  readDir, lstat, isFile, isFileSync, isDirectory, isDirectorySync, statSync, stat, readFile, readFileSync
+  readDir, lstat, isFile, isFileSync, isDirectory, isDirectorySync, statSync, stat,
+  readFile, readFileSync, nodeReadFile
 };

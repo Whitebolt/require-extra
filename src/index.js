@@ -3,6 +3,7 @@
 
 const {requireAsync, resolveModulePath, syncRequire} = require('./require');
 const {reflect, deprecated, promiseLibraryWrap} = require('./util');
+const {clear} = require('./stores');
 const Module = require('./Module');
 
 const cache = require('./cache');
@@ -71,6 +72,8 @@ function _init() {
   _exportEmitter(exported);
   _exportRequireMethods(exported, settings);
   _deprecate(exported);
+
+  exported.clearAllCache = clear;
 
   return exported;
 }
