@@ -5,10 +5,16 @@ const path = require('path');
 const callsite = require('callsite');
 const lodash = require('lodash');
 const _util = require('util');
+const {lstat, readDir} = require('./fs');
+
+const readFileCallbacks = new Map();
 let settings;
 
 const fileQueue = [];
 let loading = 0;
+
+lodash.lstat = lstat;
+lodash.readDir = readDir;
 
 
 /**
@@ -19,7 +25,7 @@ let loading = 0;
  *
  * @public
  * @param {Array|Set|*} value		Value to return or convert.
- * @returns {Array}					The converted value (or original if already an array).
+ * @returns {Array}					    The converted value (or original if already an array).
  */
 lodash.makeArray = function makeArray(value, defaultValue) {
   if (value === undefined) return [];
@@ -177,11 +183,6 @@ lodash.createLopAddIterator = function* createLopAddIterator(path, addition) {
   }
   yield path;
 };
-
-lodash.readDir = lodash.promisify(fs.readdir);
-lodash.lstat = lodash.promisify(fs.lstat);
-
-const readFileCallbacks = new Map();
 
 /**
  * Add a callback for reading of given file.

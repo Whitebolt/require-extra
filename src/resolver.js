@@ -7,10 +7,10 @@ const Triple_Map = require("./Triple_Map");
 const $private = new Private();
 const path = require('path');
 const fs = require('fs');
+const {isDirectory, isDirectorySync, isFile, isFileSync} = require('./fs');
 
 const cache = new Triple_Map();
 const pathsLookup = new Private();
-const [statDir, statFile, statCache] = [new Map(), new Map, new Map()];
 
 const _resolveLike = Object.freeze([
   'resolve',
@@ -113,104 +113,6 @@ function resolve(moduleId, options, sync=false) {
   const resolved = resolver.sync(moduleId, options);
   cache.set(moduleId, moduleDirectory, basedir, resolved);
   return resolved;
-}
-
-function statAsync(file, cb) {
-  if (statCache.has(file)) {
-    const result =  statCache.get(file);
-    if (!result[0]) return cb(null, result[1]);
-    return cb(result[0], null);
-  }
-  fs.stat(file, function(err, stat) {
-    if (!err) {
-      statCache.set(file, [null, stat]);
-      return cb(null, stat);
-    }
-    statCache.set(file, [err, null]);
-    return cb(err, null);
-  });
-}
-
-function statSync(file) {
-  if (statCache.has(file)) {
-    const result =  statCache.get(file);
-    if (!result[0]) return result[1];
-    throw result[0];
-  } else {
-    try {
-      var stat = fs.statSync(file);
-      statCache.set(file, [null, stat]);
-      return stat;
-    } catch (err) {
-      statCache.set(file, [err, null]);
-      throw err;
-    }
-  }
-}
-
-function statAction(err, stat, cb) {
-  if (!err) return (!!cb?cb(null, stat):stat);
-  if (err.code === 'ENOENT' || err.code === 'ENOTDIR') return (!!cb?cb(null, false):false);
-  return (!!cb?cb(err):err);
-}
-
-function isFile(file, cb) {
-  if (statFile.has(file)) return statAction(...statFile.get(file), cb);
-  isDirectory(path.dirname(file), (err, isDir)=>{
-    if (!!err) {
-      statFile.set(file, [err, null]);
-      return statAction(err, null, cb);
-    } else if (!isDir) {
-      statFile.set(file, [null, false]);
-      return statAction(null, false, cb);
-    }
-
-    statAsync(file, function(err, stat) {
-      if (!err) {
-        statFile.set(file, [null, stat.isFile() || stat.isFIFO()]);
-        return statAction(null, statFile.get(file)[1], cb);
-      }
-      statFile.set(file, [err, null]);
-      return statAction(err, null, cb);
-    });
-  });
-}
-
-function isFileSync(file) {
-  if (statFile.has(file)) return statAction(...statFile.get(file));
-  if (!isDirectorySync(path.dirname(file))) return false;
-  try {
-    const stat = statSync(file);
-    statFile.set(file, [null, stat.isFile() || stat.isFIFO()]);
-    return statAction(null, statFile.get(file)[1]);
-  } catch (err) {
-    statFile.set(file, [err, null]);
-    return statAction(err, null);
-  }
-}
-
-function isDirectory(dir, cb) {
-  if (statDir.has(dir)) return statAction(...statDir.get(dir), cb);
-  statAsync(dir, function(err, stat) {
-    if (!err) {
-      statDir.set(dir, [null, stat.isDirectory()]);
-      return statAction(null, statDir.get(dir)[1], cb);
-    }
-    statDir.set(dir, [err, null]);
-    return statAction(err, null, cb);
-  });
-}
-
-function isDirectorySync(dir) {
-  if (statDir.has(dir)) return statAction(...statDir.get(dir));
-  try {
-    const stat = statSync(dir);
-    statDir.set(dir, [null, stat.isDirectory()]);
-    return statAction(null, statDir.get(dir)[1]);
-  } catch (err) {
-    statDir.set(dir, [err, null]);
-    return statAction(err, null);
-  }
 }
 
 class Resolver {
