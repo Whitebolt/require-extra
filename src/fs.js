@@ -6,8 +6,15 @@ let loading = 0;
 
 const {statDir, statFile, statCache, lStatCache, fileQueue, readDirCache} = require('./stores');
 
+
+const fs = Object.assign({}, require('fs'));
+if (Object.getOwnPropertyDescriptor(fs, 'promises')) {
+  Object.defineProperty(fs, 'promises', {
+    get() {return fs.promises}
+  });
+}
+
 const path = require('path');
-const fs = require('fs');
 const promisify = require('util').promisify || Promise.promisify || require('./util').promisify;
 const {memoize, memoizeNode, memoizePromise} = require('./memoize');
 const {lstat, lstatSync} = createLstatMethods(lStatCache, statCache);
