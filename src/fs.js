@@ -10,11 +10,11 @@ const path = require('path');
 const fs = require('fs');
 const promisify = require('util').promisify || Promise.promisify || require('./util').promisify;
 const {memoize, memoizeNode, memoizePromise} = require('./memoize');
-const _readDir = (!!fs.promises ? fs.promises.readdir : promisify(fs.readdir));
 const {lstat, lstatSync} = createLstatMethods(lStatCache, statCache);
 const {stat, statSync} = createStatMethods(statCache);
 const {isDirectory, isDirectorySync} = createIsDirectoryMethods(statDir);
 const {isFile, isFileSync} = createIsFileMethods(statFile);
+const {readDir, readDirSync} = createReadDirMethods(readDirCache);
 
 
 
@@ -125,21 +125,17 @@ function createIsDirectoryMethods(cache=new Map()) {
   return {isDirectory, isDirectorySync};
 }
 
-async function readDir(dir) {
-  if (readDirCache.has(dir)) {
-    const results = readDirCache.get(dir);
-    if (!results[0]) return results[1];
-    return Promise.reject(results[0]);
-  }
+function createReadDirMethods(cache=new Map()) {
+  const _readDir = memoizeNode(fs.readdir);
+  const readDirSync = memoize(fs.readdirSync);
+  const readDirPromise = memoizePromise(!!fs.promises?fs.promises.readdir:promisify(fs.readdir));
+  const readDir = (dir, cb)=>(!cb?readDirPromise(dir):_readDir(dir, cb));
 
-  try {
-    const files = await _readDir(dir);
-    readDirCache.set(dir, [null, files]);
-    return files;
-  } catch(err) {
-    readDirCache.set(dir, [err, undefined]);
-    return Promise.reject(err);
-  }
+  _readDir.cache = cache;
+  readDirSync.cache = cache;
+  readDirPromise.cache = cache;
+
+  return {readDir, readDirSync}
 }
 
 /**
@@ -302,6 +298,6 @@ function readFileSync(filename, cache, encoding=null) {
 
 
 module.exports = {
-  readDir, lstat, lstatSync, isFile, isFileSync, isDirectory, isDirectorySync, statSync, stat,
+  readDir, lstat, lstatSync, isFile, isFileSync, isDirectory, readDirSync, isDirectorySync, statSync, stat,
   readFile, readFileSync, nodeReadFile
 };
