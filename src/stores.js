@@ -24,28 +24,8 @@ function makeArray(value) {
   return [value];
 }
 
-function getInStore(storeId, key) {
-  if (stores.hasOwnProperty(storeId)) {
-    if ('get' in stores[storeId]) return stores[storeId].get(...makeArray(key));
-  }
-}
-
-function setInStore(storeId, key, value) {
-  if (stores.hasOwnProperty(storeId)) {
-    if ('set' in stores[storeId]) return stores[storeId].set(...makeArray(key), value);
-  }
-}
-
-function hasInStore(storeId, key) {
-  if (stores.hasOwnProperty(storeId)) {
-    if ('has' in stores[storeId]) return stores[storeId].has(...makeArray(key));
-  }
-}
-
-function deleteInStore(storeId, key) {
-  if (stores.hasOwnProperty(storeId)) {
-    if ('has' in stores[storeId]) return stores[storeId].delete(...makeArray(key));
-  }
+function getStore(storeId) {
+  if (stores.hasOwnProperty(storeId)) return stores[storeId];
 }
 
 const stores = {
@@ -59,10 +39,7 @@ const stores = {
   pathsLookup: new Private(),
   resolveCache: new Triple_Map(),
   clear,
-  getInStore,
-  setInStore,
-  hasInStore,
-  deleteInStore
+  getStore
 };
 
 module.exports = stores;

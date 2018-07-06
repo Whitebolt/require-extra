@@ -3,7 +3,7 @@
 
 const {requireAsync, resolveModulePath, syncRequire} = require('./require');
 const {reflect, deprecated, promiseLibraryWrap} = require('./util');
-const {clear, hasInStore, getInStore, setInStore, deleteInStore} = require('./stores');
+const {clear, getStore} = require('./stores');
 const Module = require('./Module');
 
 const cache = require('./cache');
@@ -74,10 +74,7 @@ function _init() {
   _deprecate(exported);
 
   exported.clearAllCache = clear;
-  exported.cacheHas = hasInStore;
-  exported.cacheGet = getInStore;
-  exported.cacheSet = setInStore;
-  exported.cacheDelete = deleteInStore;
+  exported.getStore = getStore;
 
   return exported;
 }
