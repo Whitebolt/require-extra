@@ -6,14 +6,16 @@ let loading = 0;
 
 const {statDir, statFile, statCache, lStatCache, fileQueue, readDirCache} = require('./stores');
 
+const path = require('path');
 const fs = require('fs');
 const promisify = require('util').promisify || Promise.promisify || require('./util').promisify;
 const {memoize, memoizeNode, memoizePromise} = require('./memoize');
 const _readDir = (!!fs.promises ? fs.promises.readdir : promisify(fs.readdir));
-const {lstat, lstatSync} = createLstatMethods(lStatCache);
+const {lstat, lstatSync} = createLstatMethods(lStatCache, statCache);
 const {stat, statSync} = createStatMethods(statCache);
-const {isFile, isFileSync} = createIsFileMethods(statFile);
 const {isDirectory, isDirectorySync} = createIsDirectoryMethods(statDir);
+const {isFile, isFileSync} = createIsFileMethods(statFile);
+
 
 
 function createStatMethods(cache=new Map()) {
@@ -29,9 +31,16 @@ function createStatMethods(cache=new Map()) {
   return {stat, statSync};
 }
 
-function createLstatMethods(cache=new Map()) {
-  const _lstat = memoizeNode(fs.lstat);
-  const lstatSync = memoize(fs.lstatSync);
+function createLstatMethods(cache=new Map(), statCache) {
+  const _lstat = memoizeNode((file, cb)=>fs.lstat(file, (err, stat)=>{
+    if (!err && !stat.isSymbolicLink() && !!statCache) statCache.set(file, [null, stat]);
+    return cb(err, stat);
+  }));
+  const lstatSync = memoize(file=>{
+    const stat = fs.lstatSync;
+    if (!stat.isSymbolicLink() && !!statCache) statCache.set(file, [null, stat]);
+    return stat;
+  });
   const lstatPromise = memoizePromise(!!fs.promises?fs.promises.lstat:promisify(fs.lstat));
   const lstat = (file, cb)=>(!cb?lstatPromise(file):_lstat(file, cb));
 
@@ -42,17 +51,29 @@ function createLstatMethods(cache=new Map()) {
   return {lstat, lstatSync};
 }
 
+const _testParentDirectory = (parent, doStat, file, cb)=>isDirectory(parent, (err, isDir)=>{
+  if (!!err) return cb(err, null);
+  if (!isDir) return cb(null, false);
+  return doStat(file, cb);
+});
+
 function createIsFileMethods(cache=new Map()) {
-  const _isFile = memoizeNode(function isFile(file, cb) {
-    stat(file, (err, stat)=>{
-      if (!err) return cb(null, stat.isFile() || stat.isFIFO());
-      if (err.code === 'ENOENT' || err.code === 'ENOTDIR') return cb(null, false);
-      return cb(err);
-    });
+  const doStat = (file, cb)=>stat(file, (err, stat)=>{
+    if (!err) return cb(null, stat.isFile() || stat.isFIFO());
+    if (err.code === 'ENOENT' || err.code === 'ENOTDIR') return cb(null, false);
+    return cb(err);
   });
 
-  const isFileSync = memoize(function isFileSync(file) {
+  const _isFile = memoizeNode((file, cb)=>{
+    const parent = path.dirname(file);
+    if (parent === path) return doStat(file, cb);
+    return _testParentDirectory(parent, doStat, file, cb);
+  });
+
+  const isFileSync = memoize(file=>{
     try {
+      const parent = path.dirname(file);
+      if ((parent !== file) && !isDirectorySync(parent)) return false;
       const stat = statSync(file);
       return stat.isFile() || stat.isFIFO();
     } catch (err) {
@@ -63,24 +84,30 @@ function createIsFileMethods(cache=new Map()) {
   const isFilePromise = memoizePromise(promisify(_isFile));
   const isFile = (file, cb)=>(!cb?isFilePromise(file):_isFile(file, cb));
 
-  _isFile.cache = statFile;
-  isFileSync.cache = statFile;
-  isFilePromise.cache = statFile;
+  _isFile.cache = cache;
+  isFileSync.cache = cache;
+  isFilePromise.cache = cache;
 
   return {isFile, isFileSync};
 }
 
 function createIsDirectoryMethods(cache=new Map()) {
-  const _isDir = memoizeNode(function isDir(dir, cb) {
-    stat(dir, (err, stat)=>{
-      if (!err) return cb(null, stat.isDirectory());
-      if (err.code === 'ENOENT' || err.code === 'ENOTDIR') return cb(null, false);
-      return cb(err);
-    });
+  const doStat = (dir, cb)=>stat(dir, (err, stat)=>{
+    if (!err) return cb(null, stat.isDirectory());
+    if (err.code === 'ENOENT' || err.code === 'ENOTDIR') return cb(null, false);
+    return cb(err);
   });
 
-  const isDirSync = memoize(function isDirSync(dir) {
+  const _isDirectory = memoizeNode((dir, cb)=>{
+    const parent = path.dirname(dir);
+    if (parent === dir) return doStat(dir, cb);
+    return _testParentDirectory(parent, doStat, dir, cb);
+  });
+
+  const isDirectorySync = memoize(dir=>{
     try {
+      const parent = path.dirname(dir);
+      if ((parent !== dir) && !isDirectorySync(parent)) return false;
       const stat = statSync(dir);
       return stat.isDirectory();
     } catch (err) {
@@ -88,14 +115,14 @@ function createIsDirectoryMethods(cache=new Map()) {
       throw err;
     }
   });
-  const isDirPromise = memoizePromise(promisify(_isDir));
-  const isDir = (dir, cb)=>(!cb?isDirPromise(dir):_isDir(dir, cb));
+  const isDirectoryPromise = memoizePromise(promisify(_isDirectory));
+  const isDirectory = (dir, cb)=>(!cb?isDirectoryPromise(dir):_isDirectory(dir, cb));
 
-  _isDir.cache = cache;
-  isDirSync.cache = cache;
-  isDirPromise.cache = cache;
+  _isDirectory.cache = cache;
+  isDirectorySync.cache = cache;
+  isDirectoryPromise.cache = cache;
 
-  return {isDir, isDirSync};
+  return {isDirectory, isDirectorySync};
 }
 
 async function readDir(dir) {
