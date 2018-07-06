@@ -1,9 +1,16 @@
 'use strict';
 
-const _defaultMemoizeResolver = first=>first;
+let settings
+
+const _defaultMemoizeResolver = first=>{
+  if (!settings) settings = require('./settings');
+  return first;
+};
 
 function memoize(fn, resolver=_defaultMemoizeResolver) {
   function memoized(...params) {
+    if (!settings) settings = require('./settings');
+    if (!settings.get('useCache')) return fn(...params);
     const lookupId = resolver(...params);
     if (memoized.cache.has(lookupId)) {
       const [err, data] = memoized.cache.get(lookupId);
@@ -27,8 +34,10 @@ function memoize(fn, resolver=_defaultMemoizeResolver) {
 
 function memoizeNode(fn, resolver=_defaultMemoizeResolver) {
   function memoized(...params) {
-    const lookupId = resolver(...params);
+    if (!settings) settings = require('./settings');
+    if (!settings.get('useCache')) return fn(...params);
     const cb = params.pop();
+    const lookupId = resolver(...params);
     if (memoized.cache.has(lookupId)) return cb(...memoized.cache.get(lookupId));
     return fn(...params, (...result)=>{
       memoized.cache.set(lookupId, result);
@@ -42,6 +51,8 @@ function memoizeNode(fn, resolver=_defaultMemoizeResolver) {
 
 function memoizePromise(fn, resolver=_defaultMemoizeResolver) {
   function memoized(...params) {
+    if (!settings) settings = require('./settings');
+    if (!settings.get('useCache')) return fn(...params);
     const lookupId = resolver(...params);
     if (memoized.cache.has(lookupId)) {
       const [err, ...data] = memoized.cache.get(lookupId);
