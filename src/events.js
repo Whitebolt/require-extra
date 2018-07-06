@@ -79,6 +79,7 @@ function Load_Event(config) {
   Event.call(this, config);
   this.type = 'load';
   this.source = config.source;
+  this.data = {target:config.target};
   _doFreeze(this, freezer);
 }
 
@@ -89,9 +90,11 @@ function Loaded_Event(config) {
   var freezer = _setFreeze(this);
   Event.call(this, config);
   this.type = 'loaded';
+  this.otherTarget = config.otherTarget || config.target;
   this.source = config.source;
   this.duration = config.duration;
   this.size = config.size;
+  this.data = {};
   _doFreeze(this, freezer);
 }
 

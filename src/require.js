@@ -109,12 +109,14 @@ function resolveModulePathSync(userResolver, moduleName) {
  */
 function _loadModuleText(target, source, sync=false) {
   const time = process.hrtime();
-  const loadEvent = emitter.emit('load', new emitter.Load({target, source, sync}));
+  const loadEventEvent = new emitter.Load({target, source, sync});
+  const loadEvent = emitter.emit('load', loadEventEvent);
 
   const loaded = txt=>{
     try {
       const loadedEvent = emitter.emit('loaded', new emitter.Loaded({
         target,
+        otherTarget: loadEventEvent.data.target,
         duration: process.hrtime(time),
         size: txt.length,
         source,
@@ -132,9 +134,9 @@ function _loadModuleText(target, source, sync=false) {
     if (!_error.ignore || (_error.ignore && isFunction(_error.ignore) && !_error.ignore())) throw error;
   };
 
-  if (!sync) return loadEvent.then(()=>readFile(target, fileCache).then(loaded, loadError), loadError);
+  if (!sync) return loadEvent.then(()=>readFile(loadEventEvent.data.target || target, fileCache).then(loaded, loadError), loadError);
   try {
-    return loaded(readFileSync(target, fileCache));
+    return loaded(readFileSync(loadEventEvent.data.target || target, fileCache));
   } catch(error) {
     loadError(error);
   }
