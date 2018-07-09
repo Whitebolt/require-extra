@@ -18,7 +18,10 @@ function tryModule(useSync, modulePath, defaultReturnValue) {
   if (!modulePath) return defaultReturnValue;
   modulePath = makeArray(modulePath);
 
-  return (useSync ? _tryModuleSync(modulePath, defaultReturnValue) : _tryModule(modulePath, defaultReturnValue));
+  return (useSync ?
+    _tryModuleSync(modulePath, defaultReturnValue) :
+    _tryModule(modulePath, defaultReturnValue)
+  );
 }
 
 /**
@@ -47,7 +50,7 @@ async function _tryModule(modulePath, defaultReturnValue) {
  * @param {*} defaultReturnValue        Default value to return.
  * @returns {*}
  */
-async function _tryModuleSync(modulePath, defaultReturnValue) {
+function _tryModuleSync(modulePath, defaultReturnValue) {
   try {
     return syncRequire({squashErrors:true}, modulePath.shift());
   } catch (err) { }
