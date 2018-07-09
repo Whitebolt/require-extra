@@ -205,7 +205,7 @@ async function tryLoading(files, source, options, failCount=files.length) {
       if (options.onload) options.onload(target, module);
       return [target, module];
     } catch (error) {
-      if (!options.squashErrors) throw error
+      if (!options.squashErrors) throw error;
       cache.delete(target);
       retry.push(target);
       if (options.onerror) errors.set(target, error);
