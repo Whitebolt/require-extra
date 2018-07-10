@@ -251,6 +251,7 @@ function _createModuleConfig(filename, content, userResolver) {
     includeGlobals:true,
     syncRequire:_syncRequire(_syncRequire),
     resolveModulePath,
+    resolveModulePathSync,
     basedir: path.dirname(filename),
     resolver: userResolver
   }, userResolver.export);
@@ -439,5 +440,5 @@ function _syncRequire(userResolver={}) {
 
 
 module.exports = {
-  requireAsync, requireSync, resolveModulePath, syncRequire
+  requireAsync, requireSync, resolveModulePath, resolveModulePathSync, syncRequire
 };

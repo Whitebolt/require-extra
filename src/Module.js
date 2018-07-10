@@ -51,7 +51,8 @@ function _getRequire(config) {
   return Object.assign(function(...params) {
     return config.syncRequire(_getResolver(params), ...params);
   }, requireX, {
-    resolve: (...params)=>config.resolveModulePath(_getResolver(params), ...params),
+    resolve: (...params)=>config.resolveModulePathSync(_getResolver(params), ...params),
+    resolveAsync: (...params)=>config.resolveModulePath(_getResolver(params), ...params),
     async: (...params)=>requireX(_getResolver(params), ...params),
     native: moduleId=>requireLike(config.filename)(moduleId),
     import: (dirPath, options, callback)=>requireX.import(dirPath, _mergeResolver(options), callback)

@@ -1,7 +1,7 @@
 /* jshint node: true */
 'use strict';
 
-const {requireAsync, resolveModulePath, syncRequire} = require('./require');
+const {requireAsync, resolveModulePath, resolveModulePathSync, syncRequire} = require('./require');
 const {reflect, deprecated, promiseLibraryWrap} = require('./util');
 const {clear, getStore} = require('./stores');
 const Module = require('./Module');
@@ -48,7 +48,8 @@ function _exportRequireMethods(exported, settings) {
   const tryModule = require('./try');
   const importDirectory = require('./import');
 
-  exported.resolve = promiseLibraryWrap(resolveModulePath, settings);
+  exported.resolve = resolveModulePathSync;
+  exported.resolveAsync = promiseLibraryWrap(resolveModulePath, settings);
   exported.try = promiseLibraryWrap(tryModule, settings);
   exported.getResolver = Resolver.getResolver;
   exported.Resolver = Resolver;
