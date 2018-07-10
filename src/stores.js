@@ -29,6 +29,7 @@ function getStore(storeId) {
 }
 
 const stores = {
+  filePaths: new WeakMap(),
   fileQueue: [],
   statDir: new Map(),
   statFile: new Map(),

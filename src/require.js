@@ -10,7 +10,7 @@ const path = require('path');
 const toNamespacedPath = path.toNamespacedPath ? path.toNamespacedPath : path=>path;
 const {isString, isFunction, readFile, readFileSync, getCallingDir, promisify, getRequire} = require('./util');
 const emitter = require('./events');
-const {fileCache} = require('./stores');
+const {fileCache, filePaths} = require('./stores');
 
 const _xRequireExtract = /\brequire\s*?\(\s*?[\"\'](.*?)[\"\']\*?\)/g;
 
@@ -192,6 +192,8 @@ function _runEval(config, parser, options, sync=true) {
       cacheSize: cache.size,
       sync
     }));
+    try {filePaths.set(module.exports, module.filename);} catch(err) {}
+
     return sync?module:evaluatedEvent.then(()=>module);
   }
 
