@@ -134,27 +134,30 @@ class Resolver {
     }
   }
 
-  resolve(moduleId, dir, cb) {
-    const options = Object.assign(pick(this, allowedOptions), {
-      basedir:dir || __dirname,
+  resolve(moduleId, basedir=this.basedir||__dirname, cb) {
+    const options = {
+      ...pick(this, allowedOptions),
+      basedir,
       isDirectory,
       isFile,
       readFile: (...params)=>nodeReadFile(fileCache, ...params)
-    });
+    };
 
-    options.paths = [...(options.paths||[]), ...getPaths(dir, options)];
+    options.paths = [...(options.paths||[]), ...getPaths(basedir, options)];
     if (!cb) return resolve(moduleId, options);
     return resolve(moduleId, options).then(resolved=>cb(null, resolved), err=>cb(err, null));
   }
 
-  resolveSync(moduleId, dir) {
-    const options = Object.assign(pick(this, allowedOptions), {
-      basedir:dir || __dirname,
+  resolveSync(moduleId, basedir=this.basedir||__dirname) {
+    const options = {
+      ...pick(this, allowedOptions),
+      basedir,
       isDirectory: isDirectorySync,
       isFile: isFileSync,
       readFile: (path, {encoding=null})=>readFileSync(path, fileCache, encoding)
-    });
-    options.paths = [...(options.paths||[]),...getPaths(dir, options)];
+    };
+
+    options.paths = [...(options.paths||[]),...getPaths(basedir, options)];
     return resolve(moduleId, options, true);
   }
 
