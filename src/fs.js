@@ -4,6 +4,9 @@ const readFileCallbacks = new Map();
 let settings;
 let loading = 0;
 
+const {memoize, memoizeNode, memoizePromise, memoizeRegExp} = require('./memoize');
+const xTrailingSlash = memoizeRegExp(/\/$/);
+
 const {statDir, statFile, statCache, lStatCache, fileQueue, readDirCache} = require('./stores');
 
 
@@ -14,9 +17,13 @@ if (Object.getOwnPropertyDescriptor(fs, 'promises')) {
   });
 }
 
+const fileMemoizeResolver = path=>{
+  if (!settings) settings = require('./settings');
+  return xTrailingSlash.replace(path, '');
+};
+
 const path = require('path');
 const promisify = require('util').promisify || Promise.promisify || require('./util').promisify;
-const {memoize, memoizeNode, memoizePromise} = require('./memoize');
 const {lstat, lstatSync} = createLstatMethods(lStatCache, statCache);
 const {stat, statSync} = createStatMethods(statCache);
 const {isDirectory, isDirectorySync} = createIsDirectoryMethods(statDir);
@@ -25,10 +32,11 @@ const {readDir, readDirSync} = createReadDirMethods(readDirCache);
 
 
 
+
 function createStatMethods(cache=new Map()) {
-  const _stat = memoizeNode(fs.stat);
-  const statSync = memoize(fs.statSync);
-  const statPromise = memoizePromise(!!fs.promises?fs.promises.stat:promisify(fs.stat));
+  const _stat = memoizeNode(fs.stat, fileMemoizeResolver);
+  const statSync = memoize(fs.statSync, fileMemoizeResolver);
+  const statPromise = memoizePromise(!!fs.promises?fs.promises.stat:promisify(fs.stat), fileMemoizeResolver);
   const stat = (file, cb)=>(!cb?statPromise(file):_stat(file, cb));
 
   _stat.cache = cache;
@@ -42,13 +50,13 @@ function createLstatMethods(cache=new Map(), statCache) {
   const _lstat = memoizeNode((file, cb)=>fs.lstat(file, (err, stat)=>{
     if (!err && !stat.isSymbolicLink() && !!statCache) statCache.set(file, [null, stat]);
     return cb(err, stat);
-  }));
+  }), fileMemoizeResolver);
   const lstatSync = memoize(file=>{
     const stat = fs.lstatSync;
     if (!stat.isSymbolicLink() && !!statCache) statCache.set(file, [null, stat]);
     return stat;
-  });
-  const lstatPromise = memoizePromise(!!fs.promises?fs.promises.lstat:promisify(fs.lstat));
+  }, fileMemoizeResolver);
+  const lstatPromise = memoizePromise(!!fs.promises?fs.promises.lstat:promisify(fs.lstat), fileMemoizeResolver);
   const lstat = (file, cb)=>(!cb?lstatPromise(file):_lstat(file, cb));
 
   _lstat.cache = cache;
@@ -75,7 +83,7 @@ function createIsFileMethods(cache=new Map()) {
     const parent = path.dirname(file);
     if (parent === path) return doStat(file, cb);
     return _testParentDirectory(parent, doStat, file, cb);
-  });
+  }, fileMemoizeResolver);
 
   const isFileSync = memoize(file=>{
     try {
@@ -87,8 +95,8 @@ function createIsFileMethods(cache=new Map()) {
       if (err && (err.code === 'ENOENT' || err.code === 'ENOTDIR')) return false;
       throw err;
     }
-  });
-  const isFilePromise = memoizePromise(promisify(_isFile));
+  }, fileMemoizeResolver);
+  const isFilePromise = memoizePromise(promisify(_isFile), fileMemoizeResolver);
   const isFile = (file, cb)=>(!cb?isFilePromise(file):_isFile(file, cb));
 
   _isFile.cache = cache;
@@ -109,7 +117,7 @@ function createIsDirectoryMethods(cache=new Map()) {
     const parent = path.dirname(dir);
     if (parent === dir) return doStat(dir, cb);
     return _testParentDirectory(parent, doStat, dir, cb);
-  });
+  }, fileMemoizeResolver);
 
   const isDirectorySync = memoize(dir=>{
     try {
@@ -121,8 +129,8 @@ function createIsDirectoryMethods(cache=new Map()) {
       if (err && (err.code === 'ENOENT' || err.code === 'ENOTDIR')) return false;
       throw err;
     }
-  });
-  const isDirectoryPromise = memoizePromise(promisify(_isDirectory));
+  }, fileMemoizeResolver);
+  const isDirectoryPromise = memoizePromise(promisify(_isDirectory), fileMemoizeResolver);
   const isDirectory = (dir, cb)=>(!cb?isDirectoryPromise(dir):_isDirectory(dir, cb));
 
   _isDirectory.cache = cache;
@@ -133,9 +141,9 @@ function createIsDirectoryMethods(cache=new Map()) {
 }
 
 function createReadDirMethods(cache=new Map()) {
-  const _readDir = memoizeNode(fs.readdir);
-  const readDirSync = memoize(fs.readdirSync);
-  const readDirPromise = memoizePromise(!!fs.promises?fs.promises.readdir:promisify(fs.readdir));
+  const _readDir = memoizeNode(fs.readdir, fileMemoizeResolver);
+  const readDirSync = memoize(fs.readdirSync, fileMemoizeResolver);
+  const readDirPromise = memoizePromise(!!fs.promises?fs.promises.readdir:promisify(fs.readdir), fileMemoizeResolver);
   const readDir = (dir, cb)=>(!cb?readDirPromise(dir):_readDir(dir, cb));
 
   _readDir.cache = cache;

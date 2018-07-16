@@ -1,6 +1,6 @@
 'use strict';
 
-let settings
+let settings;
 
 const _defaultMemoizeResolver = first=>{
   if (!settings) settings = require('./settings');
@@ -56,7 +56,7 @@ function memoizePromise(fn, resolver=_defaultMemoizeResolver) {
     const lookupId = resolver(...params);
     if (memoized.cache.has(lookupId)) {
       const [err, ...data] = memoized.cache.get(lookupId);
-      if (!err) return Promise.reject(err);
+      if (!!err) return Promise.reject(err);
       return Promise.resolve(((data.length > 1) ? data : data[0]));
     }
 
@@ -73,6 +73,56 @@ function memoizePromise(fn, resolver=_defaultMemoizeResolver) {
   return memoized;
 }
 
+function memoizeRegExp(rx) {
+  const cache = new Map();
+
+  function getCache(cacheId) {
+    if (!cache.has(cacheId)) cache.set(cacheId, new Map());
+    return cache.get(cacheId);
+  }
+
+  const _rx = new RegExp(rx.source, rx.flags);
+  const memoizedTest = memoize(rx.test.bind(rx));
+  const replaceCache = getCache('replaceCache');
+  const matchCache = getCache('matchCache');
+  const execCache = getCache('execCache');
+
+
+  const memoized = {
+    test(value, useCache=true) {
+      if (!useCache) return rx.test(value);
+      return memoizedTest(value);
+    },
+
+    replace(value, replaceString, useCache=true) {
+      if (!useCache) return value.replace(rx, replaceString);
+      if (!replaceCache.has(value)) replaceCache.set(value, memoize(value.replace.bind(value), (rx, rs)=>rs));
+      return replaceCache.get(value)(rx, replaceString);
+    },
+
+    match(value, useCache=true) {
+      if (!useCache) return value.replace(rx, replaceString);
+      if (!matchCache.has(value)) matchCache.set(value, memoize(value.match.bind(value)));
+      return matchCache.get(value)(rx);
+    },
+
+    exec(value, useCache=true) {
+      if (!useCache) return rx.exec(value);
+      if (!execCache.has(value)) execCache.set(value, new Map());
+      if (!execCache.get(value).has(rx.lastIndex)) {
+        execCache.get(value).set(rx.lastIndex, rx.exec(value));
+      }
+      return execCache.get(value).get(rx.lastIndex);
+    },
+
+    clear() {
+      cache.forEach(cache=>cache.clear());
+    }
+  };
+
+  return Object.assign(_rx, memoized);
+}
+
 module.exports = {
-  memoize, memoizeNode, memoizePromise
+  memoize, memoizeNode, memoizePromise, memoizeRegExp
 };
