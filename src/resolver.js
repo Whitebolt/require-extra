@@ -1,7 +1,7 @@
 'use strict';
 
 const settings = require('./settings');
-const Private = require("./Private");
+const $private = require("@simpo/private").getInstance();
 const path = require('path');
 const {
   isDirectory,
@@ -20,8 +20,6 @@ const {
 } = require('./util');
 const {fileCache, pathsLookup, resolveCache} = require('./stores');
 
-
-const $private = new Private();
 
 const _resolveLike = Object.freeze([
   'resolve',

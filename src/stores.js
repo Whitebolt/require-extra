@@ -1,6 +1,6 @@
 'use strict';
 
-const Private = require("./Private");
+const Private = require("@simpo/private");
 const Triple_Map = require("./Triple_Map");
 
 

@@ -24,6 +24,7 @@
   ],
   "dependencies": {
     "@babel/plugin-proposal-decorators": "^7.0.0-beta.35",
+    "@simpo/private": "^0.3.0",
     "babel-polyfill": "^6.26.0",
     "callsite": "^1.0.0",
     "lodash": "^4.17.5",
@@ -124,5 +125,5 @@
     ]
   },
   "engines": ">=4.0.0",
-  "version": "1.10.2"
+  "version": "1.11.0"
 }
