@@ -18,7 +18,8 @@ const {
   without,
   chain
 } = require('./util');
-const {fileCache, pathsLookup, resolveCache} = require('./stores');
+const {fileCache, resolveCache} = require('./stores');
+const {memoize} = require('./memoize');
 
 
 const _resolveLike = Object.freeze([
@@ -83,21 +84,14 @@ function isChildOf(child, parent) {
   return (child.substring(0, parent.length) === parent);
 }
 
-function getPaths(dir, options) {
-  const roots = settings.get('roots');
-  if (!roots) return [];
-
-  const found = roots.findIndex((rootPath, n)=>(isChildOf(dir, rootPath) && (n>0)));
-  if (found < 0) return [];
-  if (pathsLookup.has(roots, found)) return pathsLookup.get(roots, found);
-
-  const paths = chain(roots.slice(0, found))
+const getExtraPaths = memoize(function(roots, moduleDirectory='node_modules') {
+  const paths = chain(roots)
     .map(root=>{
       let cPath = '/';
       return chain(root.split(path.sep))
         .map(part=>{
           cPath = path.join(cPath, part);
-          return path.join(cPath, options.moduleDirectory || 'node_modules');
+          return path.join(cPath, moduleDirectory);
         })
         .value();
     })
@@ -106,8 +100,21 @@ function getPaths(dir, options) {
     .uniq()
     .value();
 
-  pathsLookup.set(roots, found, paths);
   return paths;
+}, {cacheParams:2});
+
+const getRoots = memoize(function(roots, dir) {
+  return roots.findIndex((rootPath, n)=>(isChildOf(dir, rootPath) && (n>0)));
+}, {cacheParams:2});
+
+function getPaths(dir, options) {
+  const roots = settings.get('roots');
+  if (!roots) return [];
+
+  const found = getRoots(roots, dir);
+  if (found < 0) return [];
+
+  return getExtraPaths(found, options.moduleDirectory);
 }
 
 function resolve(moduleId, options, sync=false) {

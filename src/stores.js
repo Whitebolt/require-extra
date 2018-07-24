@@ -37,7 +37,6 @@ const stores = {
   lStatCache: new Map(),
   fileCache: new Map(),
   readDirCache: new Map(),
-  pathsLookup: new Private(),
   resolveCache: new Triple_Map(),
   clear,
   getStore
