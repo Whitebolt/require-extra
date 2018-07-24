@@ -4,8 +4,9 @@ const readFileCallbacks = new Map();
 let settings;
 let loading = 0;
 
+const path = require('path');
 const {memoize, memoizeNode, memoizePromise, memoizeRegExp} = require('./memoize');
-const xTrailingSlash = memoizeRegExp(/\/$/);
+const trimEnd  = memoize(require('./lodash').trimEnd);
 
 const {statDir, statFile, statCache, lStatCache, fileQueue, readDirCache} = require('./stores');
 
@@ -14,7 +15,6 @@ function noCache() {
   return !settings.get('useCache');
 }
 
-
 const fs = Object.assign({}, require('fs'));
 if (Object.getOwnPropertyDescriptor(fs, 'promises')) {
   Object.defineProperty(fs, 'promises', {
@@ -22,12 +22,11 @@ if (Object.getOwnPropertyDescriptor(fs, 'promises')) {
   });
 }
 
-const fileMemoizeResolver = path=>{
+const fileMemoizeResolver = _path=>{
   if (!settings) settings = require('./settings');
-  return xTrailingSlash.replace(path, '');
+  return trimEnd(_path, path.sep);
 };
 
-const path = require('path');
 const promisify = require('util').promisify || Promise.promisify || require('./util').promisify;
 const {lstat, lstatSync} = createLstatMethods(lStatCache, statCache);
 const {stat, statSync} = createStatMethods(statCache);
