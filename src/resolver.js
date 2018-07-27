@@ -18,9 +18,18 @@ const {
   without,
   chain
 } = require('./util');
-const {fileCache, resolveCache} = require('./stores');
+const {fileCache, resolveCache, getStore} = require('./stores');
 const {memoize} = require('./memoize');
 
+const resolveMemoizeOptions = {
+  cacheParams:3,
+  cache:getStore('resolveCache'),
+  resolver:(moduleId, options={})=>{
+    const {basedir, moduleDirectory='node_modules'} = options;
+    return [moduleId, moduleDirectory, basedir]
+  },
+  type:'function'
+};
 
 const _resolveLike = Object.freeze([
   'resolve',
@@ -104,7 +113,7 @@ const getExtraPaths = memoize(function(roots, moduleDirectory='node_modules') {
 }, {cacheParams:2});
 
 const getRoots = memoize(function(roots, dir) {
-  return roots.findIndex((rootPath, n)=>(isChildOf(dir, rootPath) && (n>0)));
+  return makeArray(roots).findIndex((rootPath, n)=>(isChildOf(dir, rootPath) && (n>0)));
 }, {cacheParams:2});
 
 function getPaths(dir, options) {
@@ -114,22 +123,16 @@ function getPaths(dir, options) {
   const found = getRoots(roots, dir);
   if (found < 0) return [];
 
-  return getExtraPaths(found, options.moduleDirectory);
+  return getExtraPaths(roots.slice(0, found), options.moduleDirectory);
 }
 
-function resolve(moduleId, options, sync=false) {
-  const {moduleDirectory, basedir} = options;
-  if (resolveCache.has(moduleId, moduleDirectory, basedir)) return resolveCache.get(moduleId, moduleDirectory, basedir);
-  const resolver = settings.get('resolveModule');
-  if (!sync) return promisify(resolver)(moduleId, options).then(resolved=>{
-    resolveCache.set(moduleId, moduleDirectory, basedir, resolved);
-    return resolved;
-  });
+const resolve = memoize(function resolve(moduleId, options) {
+  return promisify(settings.get('resolveModule'))(moduleId, options);
+}, {...resolveMemoizeOptions, type:'promise'});
 
-  const resolved = resolver.sync(moduleId, options);
-  resolveCache.set(moduleId, moduleDirectory, basedir, resolved);
-  return resolved;
-}
+const resolveSync = memoize(function resolveSync(moduleId, options) {
+  return settings.get('resolveModule').sync(moduleId, options);
+}, resolveMemoizeOptions);
 
 class Resolver {
   constructor(options) {
@@ -163,7 +166,7 @@ class Resolver {
     };
 
     options.paths = [...(options.paths||[]),...getPaths(basedir, options)];
-    return resolve(moduleId, options, true);
+    return resolveSync(moduleId, options);
   }
 
   addExtensions(...ext) {

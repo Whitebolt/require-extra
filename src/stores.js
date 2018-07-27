@@ -1,9 +1,5 @@
 'use strict';
 
-const Private = require("@simpo/private");
-const Triple_Map = require("./Triple_Map");
-
-
 function clear(options={}) {
   const {difference, makeArray} = require('./util');
   const {includes=Object.keys(stores),excludes=[]} = options;
@@ -37,7 +33,7 @@ const stores = {
   lStatCache: new Map(),
   fileCache: new Map(),
   readDirCache: new Map(),
-  resolveCache: new Triple_Map(),
+  resolveCache: new Map(),
   clear,
   getStore
 };

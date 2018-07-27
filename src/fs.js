@@ -5,7 +5,7 @@ let settings;
 let loading = 0;
 
 const path = require('path');
-const {memoize, memoizeNode, memoizePromise, memoizeRegExp} = require('./memoize');
+const {memoize} = require('./memoize');
 const trimEnd  = memoize(require('./lodash').trimEnd);
 
 const {statDir, statFile, statCache, lStatCache, fileQueue, readDirCache} = require('./stores');
@@ -38,11 +38,11 @@ const {readDir, readDirSync} = createReadDirMethods(readDirCache);
 
 
 function createStatMethods(cache=new Map()) {
-  const _stat = memoizeNode(fs.stat, {resolver:fileMemoizeResolver, noCache});
+  const _stat = memoize(fs.stat, {resolver:fileMemoizeResolver, noCache, type:'node-callback'});
   const statSync = memoize(fs.statSync, {resolver:fileMemoizeResolver, noCache});
-  const statPromise = memoizePromise(
+  const statPromise = memoize(
     !!fs.promises?fs.promises.stat:promisify(fs.stat),
-    {resolver:fileMemoizeResolver, noCache}
+    {resolver:fileMemoizeResolver, noCache, type:'promise'}
   );
   const stat = (file, cb)=>(!cb?statPromise(file):_stat(file, cb));
 
@@ -54,18 +54,18 @@ function createStatMethods(cache=new Map()) {
 }
 
 function createLstatMethods(cache=new Map(), statCache) {
-  const _lstat = memoizeNode((file, cb)=>fs.lstat(file, (err, stat)=>{
+  const _lstat = memoize((file, cb)=>fs.lstat(file, (err, stat)=>{
     if (!err && !stat.isSymbolicLink() && !!statCache) statCache.set(file, [null, stat]);
     return cb(err, stat);
-  }), {resolver:fileMemoizeResolver, noCache});
+  }), {resolver:fileMemoizeResolver, noCache, type:'node-callback'});
   const lstatSync = memoize(file=>{
     const stat = fs.lstatSync;
     if (!stat.isSymbolicLink() && !!statCache) statCache.set(file, [null, stat]);
     return stat;
   }, {resolver:fileMemoizeResolver, noCache});
-  const lstatPromise = memoizePromise(
+  const lstatPromise = memoize(
     !!fs.promises?fs.promises.lstat:promisify(fs.lstat),
-    {resolver:fileMemoizeResolver, noCache}
+    {resolver:fileMemoizeResolver, noCache, type:'promise'}
   );
   const lstat = (file, cb)=>(!cb?lstatPromise(file):_lstat(file, cb));
 
@@ -89,11 +89,11 @@ function createIsFileMethods(cache=new Map()) {
     return cb(err);
   });
 
-  const _isFile = memoizeNode((file, cb)=>{
+  const _isFile = memoize((file, cb)=>{
     const parent = path.dirname(file);
     if (parent === path) return doStat(file, cb);
     return _testParentDirectory(parent, doStat, file, cb);
-  }, {resolver:fileMemoizeResolver, noCache});
+  }, {resolver:fileMemoizeResolver, noCache, type:'node-callback'});
 
   const isFileSync = memoize(file=>{
     try {
@@ -106,7 +106,7 @@ function createIsFileMethods(cache=new Map()) {
       throw err;
     }
   }, {resolver:fileMemoizeResolver, noCache});
-  const isFilePromise = memoizePromise(promisify(_isFile), {resolver:fileMemoizeResolver, noCache});
+  const isFilePromise = memoize(promisify(_isFile), {resolver:fileMemoizeResolver, noCache, type:'promise'});
   const isFile = (file, cb)=>(!cb?isFilePromise(file):_isFile(file, cb));
 
   _isFile.cache = cache;
@@ -123,11 +123,11 @@ function createIsDirectoryMethods(cache=new Map()) {
     return cb(err);
   });
 
-  const _isDirectory = memoizeNode((dir, cb)=>{
+  const _isDirectory = memoize((dir, cb)=>{
     const parent = path.dirname(dir);
     if (parent === dir) return doStat(dir, cb);
     return _testParentDirectory(parent, doStat, dir, cb);
-  }, {resolver:fileMemoizeResolver, noCache});
+  }, {resolver:fileMemoizeResolver, noCache, type:'node-callback'});
 
   const isDirectorySync = memoize(dir=>{
     try {
@@ -140,7 +140,7 @@ function createIsDirectoryMethods(cache=new Map()) {
       throw err;
     }
   }, {resolver:fileMemoizeResolver, noCache});
-  const isDirectoryPromise = memoizePromise(promisify(_isDirectory), {resolver:fileMemoizeResolver, noCache});
+  const isDirectoryPromise = memoize(promisify(_isDirectory), {resolver:fileMemoizeResolver, noCache, type:'promise'});
   const isDirectory = (dir, cb)=>(!cb?isDirectoryPromise(dir):_isDirectory(dir, cb));
 
   _isDirectory.cache = cache;
@@ -151,11 +151,11 @@ function createIsDirectoryMethods(cache=new Map()) {
 }
 
 function createReadDirMethods(cache=new Map()) {
-  const _readDir = memoizeNode(fs.readdir, {resolver:fileMemoizeResolver, noCache});
+  const _readDir = memoize(fs.readdir, {resolver:fileMemoizeResolver, noCache, type:'node-callback'});
   const readDirSync = memoize(fs.readdirSync, {resolver:fileMemoizeResolver, noCache});
-  const readDirPromise = memoizePromise(
+  const readDirPromise = memoize(
     !!fs.promises?fs.promises.readdir:promisify(fs.readdir),
-    {resolver:fileMemoizeResolver, noCache}
+    {resolver:fileMemoizeResolver, noCache, type:'promise'}
   );
   const readDir = (dir, cb)=>(!cb?readDirPromise(dir):_readDir(dir, cb));
 
