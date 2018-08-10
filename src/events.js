@@ -94,7 +94,7 @@ function Loaded_Event(config) {
   this.source = config.source;
   this.duration = config.duration;
   this.size = config.size;
-  this.data = {};
+  this.data = config.data;
   _doFreeze(this, freezer);
 }
 
@@ -119,6 +119,7 @@ function Evaluated_Event(config) {
   Loaded_Event.call(this, config);
   this.type = 'evaluated';
   this.cacheSize = config.cacheSize;
+  this.exports = config.exports;
   _doFreeze(this, freezer);
 }
 

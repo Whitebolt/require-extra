@@ -112,17 +112,18 @@ function _loadModuleText(target, source, sync=false) {
   const loadEventEvent = new emitter.Load({target, source, sync});
   const loadEvent = emitter.emit('load', loadEventEvent);
 
-  const loaded = txt=>{
+  const loaded = txtBuffer=>{
     try {
       const loadedEvent = emitter.emit('loaded', new emitter.Loaded({
         target,
         otherTarget: loadEventEvent.data.target,
         duration: process.hrtime(time),
-        size: txt.length,
+        size: txtBuffer.byteLength,
         source,
-        sync
+        sync,
+        data: txtBuffer
       }));
-      return sync?txt:loadedEvent.then(()=>txt,loadError);
+      return sync?txtBuffer:loadedEvent.then(()=>txtBuffer,loadError);
     } catch (error) {
       return loadError(error);
     }
@@ -190,6 +191,7 @@ function _runEval(config, parser, options, sync=true) {
       source:(module.parent || {}).filename,
       duration:process.hrtime(time),
       cacheSize: cache.size,
+      exports: module.exports,
       sync
     }));
     try {filePaths.set(module.exports, module.filename);} catch(err) {}
