@@ -7,6 +7,7 @@ const {
   requireSync
 } = require('./require');
 const {
+  isObject,
   isFunction,
   intersection,
   readDir,
@@ -192,18 +193,24 @@ async function tryLoading(files, source, options, failCount=files.length) {
   const errors = new Map();
   const require = (options.useSyncRequire ? requireSync : requireAsync);
   const retry = [];
+  const merger = (importee, imported, target)=>{
+    if (!isFunction(imported) && isObject(imported)) return Object.assign(importee, imported);
+    importee[_getFileName(target, options.extension)] = imported;
+  };
+  const merge = (isFunction(options.merge) ? options.merge : merger);
+
   const modDefs = (await Promise.all(files.map(async (target)=>{
     if (!_canImport(target, source, options)) return;
     let canLoad = true;
     try {
       if ((options.reload === true) && (cache.has(target))) cache.delete(target);
       const module = await require(options, target);
-      if ((options.merge === true) && (!isFunction(module))) {
-        Object.assign(options.imports, module);
+      if (options.onload) canLoad = !!(await Promise.resolve(options.onload(target, module)));
+      if (!!options.merge ) {
+        merge(options.imports, module, target, merger);
       } else {
         options.imports[_getFileName(target, options.extension)] = module;
       }
-      if (options.onload) canLoad = !!(await Promise.resolve(options.onload(target, module)));
       if (canLoad) return [target, module];
       cache.delete(target);
     } catch (error) {
